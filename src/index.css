@@ -5,14 +5,34 @@
 @tailwind components;
 @tailwind utilities;
 
-/* E-Run Calinan Delivery Custom Styles */
-/* Green and off-white theme */
-.bg-ramen-cream { background-color: #FAFAF9; }
-.bg-ramen-beige { background-color: #F7F7F7; }
-.text-ramen-red { color: #22C55E; }
-.text-ramen-dark { color: #0B0A0A; }
-.border-ramen-sesame { border-color: #E5E5E5; }
-.ring-ramen-gold { --tw-ring-color: #22C55E; }
+/* Easy Buy Delivery Custom Styles */
+body {
+  @apply text-brand-charcoal font-brand bg-brand-light;
+}
+
+.bg-brand-primary {
+  background-color: #16A34A;
+}
+
+.bg-brand-light {
+  background-color: #F0FDF4;
+}
+
+.text-brand-primary {
+  color: #16A34A;
+}
+
+.text-brand-charcoal {
+  color: #111827;
+}
+
+.border-brand-primary {
+  border-color: #16A34A;
+}
+
+.ring-brand-primary {
+  --tw-ring-color: #16A34A;
+}
 
 /* Hide scrollbar for mobile nav */
 .scrollbar-hide {

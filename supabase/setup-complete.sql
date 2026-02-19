@@ -1,6 +1,6 @@
 /*
   # Complete Supabase Setup Script
-  # Run this script to set up the entire database and storage for E-Run Calinan Delivery
+  # Run this script to set up the entire database and storage for Easy Buy Delivery
   
   This script includes:
   1. Database tables (restaurants, menu_items, variations, add_ons, categories, site_settings, payment_methods)
@@ -52,6 +52,7 @@ ALTER TABLE restaurants ENABLE ROW LEVEL SECURITY;
 -- Drop existing policies if they exist
 DROP POLICY IF EXISTS "Anyone can read active restaurants" ON restaurants;
 DROP POLICY IF EXISTS "Authenticated users can manage restaurants" ON restaurants;
+DROP POLICY IF EXISTS "Anon users can manage restaurants" ON restaurants;
 
 -- Create policies
 CREATE POLICY "Anyone can read active restaurants"
@@ -60,10 +61,10 @@ CREATE POLICY "Anyone can read active restaurants"
   TO public
   USING (active = true);
 
-CREATE POLICY "Authenticated users can manage restaurants"
+CREATE POLICY "Anon users can manage restaurants"
   ON restaurants
   FOR ALL
-  TO authenticated
+  TO anon
   USING (true)
   WITH CHECK (true);
 
@@ -98,6 +99,7 @@ ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 -- Drop existing policies
 DROP POLICY IF EXISTS "Anyone can read categories" ON categories;
 DROP POLICY IF EXISTS "Authenticated users can manage categories" ON categories;
+DROP POLICY IF EXISTS "Anon users can manage categories" ON categories;
 
 -- Create policies
 CREATE POLICY "Anyone can read categories"
@@ -106,10 +108,10 @@ CREATE POLICY "Anyone can read categories"
   TO public
   USING (active = true);
 
-CREATE POLICY "Authenticated users can manage categories"
+CREATE POLICY "Anon users can manage categories"
   ON categories
   FOR ALL
-  TO authenticated
+  TO anon
   USING (true)
   WITH CHECK (true);
 
@@ -161,6 +163,7 @@ ALTER TABLE menu_items ENABLE ROW LEVEL SECURITY;
 -- Drop existing policies
 DROP POLICY IF EXISTS "Anyone can read menu items" ON menu_items;
 DROP POLICY IF EXISTS "Authenticated users can manage menu items" ON menu_items;
+DROP POLICY IF EXISTS "Anon users can manage menu items" ON menu_items;
 
 -- Create policies
 CREATE POLICY "Anyone can read menu items"
@@ -169,10 +172,10 @@ CREATE POLICY "Anyone can read menu items"
   TO public
   USING (true);
 
-CREATE POLICY "Authenticated users can manage menu items"
+CREATE POLICY "Anon users can manage menu items"
   ON menu_items
   FOR ALL
-  TO authenticated
+  TO anon
   USING (true)
   WITH CHECK (true);
 
@@ -206,6 +209,7 @@ ALTER TABLE variations ENABLE ROW LEVEL SECURITY;
 -- Drop existing policies
 DROP POLICY IF EXISTS "Anyone can read variations" ON variations;
 DROP POLICY IF EXISTS "Authenticated users can manage variations" ON variations;
+DROP POLICY IF EXISTS "Anon users can manage variations" ON variations;
 
 -- Create policies
 CREATE POLICY "Anyone can read variations"
@@ -214,10 +218,10 @@ CREATE POLICY "Anyone can read variations"
   TO public
   USING (true);
 
-CREATE POLICY "Authenticated users can manage variations"
+CREATE POLICY "Anon users can manage variations"
   ON variations
   FOR ALL
-  TO authenticated
+  TO anon
   USING (true)
   WITH CHECK (true);
 
@@ -240,6 +244,7 @@ ALTER TABLE add_ons ENABLE ROW LEVEL SECURITY;
 -- Drop existing policies
 DROP POLICY IF EXISTS "Anyone can read add-ons" ON add_ons;
 DROP POLICY IF EXISTS "Authenticated users can manage add-ons" ON add_ons;
+DROP POLICY IF EXISTS "Anon users can manage add-ons" ON add_ons;
 
 -- Create policies
 CREATE POLICY "Anyone can read add-ons"
@@ -248,10 +253,10 @@ CREATE POLICY "Anyone can read add-ons"
   TO public
   USING (true);
 
-CREATE POLICY "Authenticated users can manage add-ons"
+CREATE POLICY "Anon users can manage add-ons"
   ON add_ons
   FOR ALL
-  TO authenticated
+  TO anon
   USING (true)
   WITH CHECK (true);
 
@@ -273,6 +278,7 @@ ALTER TABLE site_settings ENABLE ROW LEVEL SECURITY;
 -- Drop existing policies
 DROP POLICY IF EXISTS "Anyone can read site settings" ON site_settings;
 DROP POLICY IF EXISTS "Authenticated users can manage site settings" ON site_settings;
+DROP POLICY IF EXISTS "Anon users can manage site settings" ON site_settings;
 
 -- Create policies
 CREATE POLICY "Anyone can read site settings"
@@ -281,10 +287,10 @@ CREATE POLICY "Anyone can read site settings"
   TO public
   USING (true);
 
-CREATE POLICY "Authenticated users can manage site settings"
+CREATE POLICY "Anon users can manage site settings"
   ON site_settings
   FOR ALL
-  TO authenticated
+  TO anon
   USING (true)
   WITH CHECK (true);
 
@@ -297,10 +303,10 @@ CREATE TRIGGER update_site_settings_updated_at
 
 -- Insert default site settings
 INSERT INTO site_settings (id, value, type, description) VALUES
-  ('site_name', 'Beracah Cafe', 'text', 'The name of the cafe/restaurant'),
-  ('site_logo', 'https://images.pexels.com/photos/302899/pexels-photo-302899.jpeg?auto=compress&cs=tinysrgb&w=300&h=300&fit=crop', 'image', 'The logo image URL for the site'),
-  ('site_description', 'Welcome to Beracah Cafe - Your perfect coffee destination', 'text', 'Short description of the cafe'),
-  ('currency', 'PHP', 'text', 'Currency symbol for prices'),
+  ('site_name', 'Easy Buy Delivery', 'text', 'The name of the service'),
+  ('site_logo', '', 'image', 'The logo image URL for the site'),
+  ('site_description', 'Your fast and reliable delivery partner in Calinan', 'text', 'Short description of the service'),
+  ('currency', '₱', 'text', 'Currency symbol for prices'),
   ('currency_code', 'PHP', 'text', 'Currency code for payments')
 ON CONFLICT (id) DO NOTHING;
 
@@ -326,6 +332,7 @@ ALTER TABLE payment_methods ENABLE ROW LEVEL SECURITY;
 -- Drop existing policies
 DROP POLICY IF EXISTS "Anyone can read active payment methods" ON payment_methods;
 DROP POLICY IF EXISTS "Authenticated users can manage payment methods" ON payment_methods;
+DROP POLICY IF EXISTS "Anon users can manage payment methods" ON payment_methods;
 
 -- Create policies
 CREATE POLICY "Anyone can read active payment methods"
@@ -334,10 +341,10 @@ CREATE POLICY "Anyone can read active payment methods"
   TO public
   USING (active = true);
 
-CREATE POLICY "Authenticated users can manage payment methods"
+CREATE POLICY "Anon users can manage payment methods"
   ON payment_methods
   FOR ALL
-  TO authenticated
+  TO anon
   USING (true)
   WITH CHECK (true);
 
@@ -373,6 +380,7 @@ ALTER TABLE groceries ENABLE ROW LEVEL SECURITY;
 -- Drop existing policies
 DROP POLICY IF EXISTS "Anyone can read active groceries" ON groceries;
 DROP POLICY IF EXISTS "Authenticated users can manage groceries" ON groceries;
+DROP POLICY IF EXISTS "Anon users can manage groceries" ON groceries;
 
 -- Create policies
 CREATE POLICY "Anyone can read active groceries"
@@ -381,10 +389,10 @@ CREATE POLICY "Anyone can read active groceries"
   TO public
   USING (available = true);
 
-CREATE POLICY "Authenticated users can manage groceries"
+CREATE POLICY "Anon users can manage groceries"
   ON groceries
   FOR ALL
-  TO authenticated
+  TO anon
   USING (true)
   WITH CHECK (true);
 
@@ -401,7 +409,117 @@ CREATE TRIGGER update_groceries_updated_at
   EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================
--- 10. CREATE STORAGE BUCKET FOR IMAGES
+-- 10. CREATE PADALA BOOKINGS TABLE
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS padala_bookings (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  customer_name text NOT NULL,
+  contact_number text NOT NULL,
+  pickup_address text NOT NULL,
+  delivery_address text NOT NULL,
+  item_description text NOT NULL,
+  item_weight text,
+  item_value decimal(10,2),
+  special_instructions text,
+  preferred_date date,
+  preferred_time text,
+  status text NOT NULL DEFAULT 'pending',
+  delivery_fee decimal(10,2),
+  distance_km decimal(10,2),
+  payment_method text,
+  reference_number text,
+  notes text,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+-- Enable RLS
+ALTER TABLE padala_bookings ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies
+DROP POLICY IF EXISTS "Anyone can create padala bookings" ON padala_bookings;
+DROP POLICY IF EXISTS "Authenticated users can manage padala bookings" ON padala_bookings;
+DROP POLICY IF EXISTS "Anon users can manage padala bookings" ON padala_bookings;
+
+-- Create policies
+CREATE POLICY "Anyone can create padala bookings"
+  ON padala_bookings
+  FOR INSERT
+  TO public
+  WITH CHECK (true);
+
+CREATE POLICY "Anon users can manage padala bookings"
+  ON padala_bookings
+  FOR ALL
+  TO anon
+  USING (true)
+  WITH CHECK (true);
+
+-- Create indexes
+CREATE INDEX IF NOT EXISTS idx_padala_bookings_status ON padala_bookings(status);
+CREATE INDEX IF NOT EXISTS idx_padala_bookings_created_at ON padala_bookings(created_at DESC);
+
+-- Create trigger
+DROP TRIGGER IF EXISTS update_padala_bookings_updated_at ON padala_bookings;
+CREATE TRIGGER update_padala_bookings_updated_at
+  BEFORE UPDATE ON padala_bookings
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================
+-- 11. CREATE REQUESTS TABLE
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS requests (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  customer_name text NOT NULL,
+  contact_number text NOT NULL,
+  request_type text NOT NULL,
+  subject text NOT NULL,
+  description text NOT NULL,
+  address text,
+  status text NOT NULL DEFAULT 'pending',
+  admin_notes text,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+-- Enable RLS
+ALTER TABLE requests ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies
+DROP POLICY IF EXISTS "Anyone can create requests" ON requests;
+DROP POLICY IF EXISTS "Authenticated users can manage requests" ON requests;
+DROP POLICY IF EXISTS "Anon users can manage requests" ON requests;
+
+-- Create policies
+CREATE POLICY "Anyone can create requests"
+  ON requests
+  FOR INSERT
+  TO public
+  WITH CHECK (true);
+
+CREATE POLICY "Anon users can manage requests"
+  ON requests
+  FOR ALL
+  TO anon
+  USING (true)
+  WITH CHECK (true);
+
+-- Create indexes
+CREATE INDEX IF NOT EXISTS idx_requests_status ON requests(status);
+CREATE INDEX IF NOT EXISTS idx_requests_created_at ON requests(created_at DESC);
+
+-- Create trigger
+DROP TRIGGER IF EXISTS update_requests_updated_at ON requests;
+CREATE TRIGGER update_requests_updated_at
+  BEFORE UPDATE ON requests
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================
+-- 12. CREATE STORAGE BUCKET FOR IMAGES
 -- ============================================
 
 -- Create storage bucket for menu images
@@ -426,6 +544,9 @@ DROP POLICY IF EXISTS "Public read access for menu images" ON storage.objects;
 DROP POLICY IF EXISTS "Authenticated users can upload menu images" ON storage.objects;
 DROP POLICY IF EXISTS "Authenticated users can update menu images" ON storage.objects;
 DROP POLICY IF EXISTS "Authenticated users can delete menu images" ON storage.objects;
+DROP POLICY IF EXISTS "Anon users can upload menu images" ON storage.objects;
+DROP POLICY IF EXISTS "Anon users can update menu images" ON storage.objects;
+DROP POLICY IF EXISTS "Anon users can delete menu images" ON storage.objects;
 
 -- Allow public read access to menu images
 CREATE POLICY "Public read access for menu images"
@@ -434,31 +555,33 @@ FOR SELECT
 TO public
 USING (bucket_id = 'menu-images');
 
--- Allow authenticated users to upload menu images
-CREATE POLICY "Authenticated users can upload menu images"
+-- Allow anon users to upload menu images
+CREATE POLICY "Anon users can upload menu images"
 ON storage.objects
 FOR INSERT
-TO authenticated
+TO anon
 WITH CHECK (bucket_id = 'menu-images');
 
--- Allow authenticated users to update menu images
-CREATE POLICY "Authenticated users can update menu images"
+-- Allow anon users to update menu images
+CREATE POLICY "Anon users can update menu images"
 ON storage.objects
 FOR UPDATE
-TO authenticated
+TO anon
 USING (bucket_id = 'menu-images');
 
--- Allow authenticated users to delete menu images
-CREATE POLICY "Authenticated users can delete menu images"
+-- Allow anon users to delete menu images
+CREATE POLICY "Anon users can delete menu images"
 ON storage.objects
 FOR DELETE
-TO authenticated
+TO anon
 USING (bucket_id = 'menu-images');
 
 -- ============================================
--- 12. INSERT SAMPLE CATEGORIES
+-- 13. INSERT SAMPLE CATEGORIES
 -- ============================================
 
+/*
+-- Sample categories removed for fresh start
 INSERT INTO categories (id, name, icon, sort_order, active) VALUES
   ('hot-coffee', 'Hot Coffee', '☕', 1, true),
   ('cold-coffee', 'Cold Coffee', '🧊', 2, true),
@@ -479,6 +602,7 @@ ON CONFLICT (id) DO UPDATE SET
   icon = EXCLUDED.icon,
   sort_order = EXCLUDED.sort_order,
   active = EXCLUDED.active;
+*/
 
 -- ============================================
 -- SETUP COMPLETE!

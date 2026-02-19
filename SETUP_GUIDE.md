@@ -1,4 +1,4 @@
-# Setup Guide for E-Run Calinan Delivery
+# Setup Guide for Easy Buy Delivery
 
 ## Recent Updates
 

@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS groceries (
 ALTER TABLE groceries ENABLE ROW LEVEL SECURITY;
 
 -- Create policies for public read access
+DROP POLICY IF EXISTS "Anyone can read active groceries" ON groceries;
 CREATE POLICY "Anyone can read active groceries"
   ON groceries
   FOR SELECT
@@ -42,6 +43,7 @@ CREATE POLICY "Anyone can read active groceries"
   USING (available = true);
 
 -- Create policies for authenticated admin access
+DROP POLICY IF EXISTS "Authenticated users can manage groceries" ON groceries;
 CREATE POLICY "Authenticated users can manage groceries"
   ON groceries
   FOR ALL
@@ -90,6 +92,7 @@ CREATE TABLE IF NOT EXISTS padala_bookings (
 ALTER TABLE padala_bookings ENABLE ROW LEVEL SECURITY;
 
 -- Create policies for public insert (customers can create bookings)
+DROP POLICY IF EXISTS "Anyone can create padala bookings" ON padala_bookings;
 CREATE POLICY "Anyone can create padala bookings"
   ON padala_bookings
   FOR INSERT
@@ -97,6 +100,7 @@ CREATE POLICY "Anyone can create padala bookings"
   WITH CHECK (true);
 
 -- Create policies for authenticated admin access
+DROP POLICY IF EXISTS "Authenticated users can manage padala bookings" ON padala_bookings;
 CREATE POLICY "Authenticated users can manage padala bookings"
   ON padala_bookings
   FOR ALL
@@ -136,6 +140,7 @@ CREATE TABLE IF NOT EXISTS requests (
 ALTER TABLE requests ENABLE ROW LEVEL SECURITY;
 
 -- Create policies for public insert (customers can create requests)
+DROP POLICY IF EXISTS "Anyone can create requests" ON requests;
 CREATE POLICY "Anyone can create requests"
   ON requests
   FOR INSERT
@@ -143,6 +148,7 @@ CREATE POLICY "Anyone can create requests"
   WITH CHECK (true);
 
 -- Create policies for authenticated admin access
+DROP POLICY IF EXISTS "Authenticated users can manage requests" ON requests;
 CREATE POLICY "Authenticated users can manage requests"
   ON requests
   FOR ALL

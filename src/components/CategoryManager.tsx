@@ -115,7 +115,7 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ onBack }) => {
                   <ArrowLeft className="h-5 w-5" />
                   <span>Back</span>
                 </button>
-                <h1 className="text-2xl font-playfair font-semibold text-black">
+                <h1 className="text-2xl font-brand font-semibold text-black">
                   {currentView === 'add' ? 'Add New Category' : 'Edit Category'}
                 </h1>
               </div>
@@ -164,7 +164,7 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ onBack }) => {
                   disabled={currentView === 'edit'}
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  {currentView === 'edit' 
+                  {currentView === 'edit'
                     ? 'Category ID cannot be changed after creation'
                     : 'Use kebab-case format (e.g., "hot-drinks", "cold-beverages")'
                   }
@@ -236,7 +236,7 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ onBack }) => {
                 <ArrowLeft className="h-5 w-5" />
                 <span>Dashboard</span>
               </button>
-              <h1 className="text-2xl font-playfair font-semibold text-black">Manage Categories</h1>
+              <h1 className="text-2xl font-brand font-semibold text-black">Manage Categories</h1>
             </div>
             <button
               onClick={handleAddCategory}
@@ -252,8 +252,8 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ onBack }) => {
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
           <div className="p-6">
-            <h2 className="text-lg font-playfair font-medium text-black mb-4">Categories</h2>
-            
+            <h2 className="text-lg font-brand font-medium text-black mb-4">Categories</h2>
+
             {categories.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-gray-500 mb-4">No categories found</p>
@@ -282,23 +282,22 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ onBack }) => {
                         <p className="text-sm text-gray-500">ID: {category.id}</p>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center space-x-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        category.active 
-                          ? 'bg-green-100 text-green-800' 
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${category.active
+                          ? 'bg-green-100 text-green-800'
                           : 'bg-red-100 text-red-800'
-                      }`}>
+                        }`}>
                         {category.active ? 'Active' : 'Inactive'}
                       </span>
-                      
+
                       <button
                         onClick={() => handleEditCategory(category)}
                         className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors duration-200"
                       >
                         <Edit className="h-4 w-4" />
                       </button>
-                      
+
                       <button
                         onClick={() => handleDeleteCategory(category.id)}
                         className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors duration-200"

@@ -19,7 +19,7 @@ export const useCategories = () => {
   const fetchCategories = async () => {
     try {
       setLoading(true);
-      
+
       const { data, error: fetchError } = await supabase
         .from('categories')
         .select('*')
@@ -64,14 +64,16 @@ export const useCategories = () => {
 
   const updateCategory = async (id: string, updates: Partial<Category>) => {
     try {
+      // Build update object dynamically
+      const updateData: any = {};
+      if (updates.name !== undefined) updateData.name = updates.name;
+      if (updates.icon !== undefined) updateData.icon = updates.icon;
+      if (updates.sort_order !== undefined) updateData.sort_order = updates.sort_order;
+      if (updates.active !== undefined) updateData.active = updates.active;
+
       const { error: updateError } = await supabase
         .from('categories')
-        .update({
-          name: updates.name,
-          icon: updates.icon,
-          sort_order: updates.sort_order,
-          active: updates.active
-        })
+        .update(updateData)
         .eq('id', id);
 
       if (updateError) throw updateError;

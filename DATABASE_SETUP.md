@@ -226,7 +226,7 @@ const { data, error } = await supabase
 ## Admin Panel Usage
 
 1. Go to `/admin` in your application
-2. Enter the admin password: `ERunCalinanDelivery@Admin!2025`
+2. Enter the admin password: `Easy Buy Delivery@Admin!2025`
 3. Click "Manage Restaurants"
 4. Click "Manage Menu" on any restaurant
 5. Add menu items with variations and add-ons

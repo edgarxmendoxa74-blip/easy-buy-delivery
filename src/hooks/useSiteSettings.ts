@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { SiteSettings, SiteSetting } from '../types';
+import { SiteSettings } from '../types';
 
 export const useSiteSettings = () => {
   const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
@@ -21,11 +21,16 @@ export const useSiteSettings = () => {
 
       // Transform the data into a more usable format
       const settings: SiteSettings = {
-        site_name: data.find(s => s.id === 'site_name')?.value || 'Beracah Cafe',
+        site_name: data.find(s => s.id === 'site_name')?.value || 'Easy Buy Delivery',
         site_logo: data.find(s => s.id === 'site_logo')?.value || '',
         site_description: data.find(s => s.id === 'site_description')?.value || '',
-        currency: data.find(s => s.id === 'currency')?.value || 'PHP',
-        currency_code: data.find(s => s.id === 'currency_code')?.value || 'PHP'
+        site_tagline: data.find(s => s.id === 'site_tagline')?.value || '',
+        address: data.find(s => s.id === 'address')?.value || 'Calinan, Davao City',
+        facebook_url: data.find(s => s.id === 'facebook_url')?.value || '',
+        facebook_handle: data.find(s => s.id === 'facebook_handle')?.value || '',
+        currency: data.find(s => s.id === 'currency')?.value || '₱',
+        currency_code: data.find(s => s.id === 'currency_code')?.value || 'PHP',
+        messenger_id: data.find(s => s.id === 'messenger_id')?.value || '61558704207383'
       };
 
       setSiteSettings(settings);
@@ -64,12 +69,11 @@ export const useSiteSettings = () => {
       const updatePromises = Object.entries(updates).map(([key, value]) =>
         supabase
           .from('site_settings')
-          .update({ value })
-          .eq('id', key)
+          .upsert({ id: key, value, updated_at: new Date().toISOString() })
       );
 
       const results = await Promise.all(updatePromises);
-      
+
       // Check for errors
       const errors = results.filter(result => result.error);
       if (errors.length > 0) {

@@ -16,9 +16,9 @@ import Requests from './components/Requests';
 import { useRestaurants } from './hooks/useRestaurants';
 import { Restaurant } from './types';
 
-function ServiceSelectionPage() {
+function ServiceSelectionPage({ cartCount }: { cartCount: number }) {
   const navigate = useNavigate();
-  
+
   const handleServiceSelect = (service: 'food' | 'pabili' | 'padala' | 'requests') => {
     switch (service) {
       case 'food':
@@ -36,12 +36,20 @@ function ServiceSelectionPage() {
     }
   };
 
-  return <ServiceSelection onServiceSelect={handleServiceSelect} />;
+  return (
+    <div className="min-h-screen bg-brand-light font-pretendard">
+      <Header
+        cartItemsCount={cartCount}
+        onCartClick={() => navigate('/food')}
+        onMenuClick={() => navigate('/')}
+      />
+      <ServiceSelection onServiceSelect={handleServiceSelect} />
+    </div>
+  );
 }
 
-function FoodService() {
+function FoodService({ cart }: { cart: any }) {
   const navigate = useNavigate();
-  const cart = useCart();
   const { restaurants, loading: restaurantsLoading } = useRestaurants();
   const [currentView, setCurrentView] = React.useState<'restaurants' | 'restaurant-menu' | 'cart' | 'checkout'>('restaurants');
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -66,8 +74,8 @@ function FoodService() {
   };
 
   return (
-    <div className="min-h-screen bg-offwhite font-inter">
-      <Header 
+    <div className="min-h-screen bg-offwhite font-pretendard">
+      <Header
         cartItemsCount={cart.getTotalItems()}
         onCartClick={() => handleViewChange('cart')}
         onMenuClick={handleBackToServices}
@@ -85,10 +93,10 @@ function FoodService() {
           </button>
         </div>
       )}
-      
+
       {currentView === 'restaurants' && (
         <>
-          <Hero 
+          <Hero
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
             restaurantCount={restaurants.length}
@@ -111,9 +119,9 @@ function FoodService() {
           updateQuantity={cart.updateQuantity}
         />
       )}
-      
+
       {currentView === 'cart' && (
-        <Cart 
+        <Cart
           cartItems={cart.cartItems}
           updateQuantity={cart.updateQuantity}
           removeFromCart={cart.removeFromCart}
@@ -123,17 +131,17 @@ function FoodService() {
           onCheckout={() => handleViewChange('checkout')}
         />
       )}
-      
+
       {currentView === 'checkout' && (
-        <Checkout 
+        <Checkout
           cartItems={cart.cartItems}
           totalPrice={cart.getTotalPrice()}
           onBack={() => handleViewChange('cart')}
         />
       )}
-      
+
       {(currentView === 'restaurants' || currentView === 'restaurant-menu') && (
-        <FloatingCartButton 
+        <FloatingCartButton
           itemCount={cart.getTotalItems()}
           onCartClick={() => handleViewChange('cart')}
         />
@@ -142,30 +150,59 @@ function FoodService() {
   );
 }
 
-function PabiliService() {
+function PabiliService({ cartCount }: { cartCount: number }) {
   const navigate = useNavigate();
-  return <PadalaBooking title="Pabili" mode="simple" onBack={() => navigate('/')} />;
+  return (
+    <div className="min-h-screen bg-white">
+      <Header
+        cartItemsCount={cartCount}
+        onCartClick={() => navigate('/food')}
+        onMenuClick={() => navigate('/')}
+      />
+      <PadalaBooking title="Pabili" mode="simple" onBack={() => navigate('/')} />
+    </div>
+  );
 }
 
-function PadalaService() {
+function PadalaService({ cartCount }: { cartCount: number }) {
   const navigate = useNavigate();
-  return <PadalaBooking title="Padala" mode="full" onBack={() => navigate('/')} />;
+  return (
+    <div className="min-h-screen bg-white">
+      <Header
+        cartItemsCount={cartCount}
+        onCartClick={() => navigate('/food')}
+        onMenuClick={() => navigate('/')}
+      />
+      <PadalaBooking title="Padala" mode="full" onBack={() => navigate('/')} />
+    </div>
+  );
 }
 
-function RequestsService() {
+function RequestsService({ cartCount }: { cartCount: number }) {
   const navigate = useNavigate();
-  return <Requests onBack={() => navigate('/')} />;
+  return (
+    <div className="min-h-screen bg-white">
+      <Header
+        cartItemsCount={cartCount}
+        onCartClick={() => navigate('/food')}
+        onMenuClick={() => navigate('/')}
+      />
+      <Requests onBack={() => navigate('/')} />
+    </div>
+  );
 }
 
 function App() {
+  const cart = useCart();
+
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<ServiceSelectionPage />} />
-        <Route path="/food" element={<FoodService />} />
-        <Route path="/pabili" element={<PabiliService />} />
-        <Route path="/padala" element={<PadalaService />} />
-        <Route path="/requests" element={<RequestsService />} />
+        <Route path="/" element={<ServiceSelectionPage cartCount={cart.getTotalItems()} />} />
+        <Route path="/food" element={<FoodService cart={cart} />} />
+        <Route path="/pabili" element={<PabiliService cartCount={cart.getTotalItems()} />} />
+        <Route path="/padala" element={<PadalaService cartCount={cart.getTotalItems()} />} />
+        <Route path="/requests" element={<RequestsService cartCount={cart.getTotalItems()} />} />
         <Route path="/admin" element={<AdminDashboard />} />
       </Routes>
     </Router>

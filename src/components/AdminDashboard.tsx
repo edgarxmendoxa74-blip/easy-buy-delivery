@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Edit, Trash2, Save, X, ArrowLeft, Coffee, TrendingUp, Package, Lock, FolderOpen, CreditCard, Settings, ShoppingCart, Tag } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, X, ArrowLeft, Coffee, TrendingUp, Package, FolderOpen, CreditCard, Settings, ShoppingCart, Tag, ShoppingBag } from 'lucide-react';
 import { MenuItem, Variation, AddOn } from '../types';
 import { addOnCategories } from '../data/menuData';
 import { useMenu } from '../hooks/useMenu';
@@ -107,10 +107,10 @@ const AdminDashboard: React.FC = () => {
       const item = menuItems.find(i => i.id === id);
       return item ? item.name : 'Unknown Item';
     }).slice(0, 5); // Show first 5 items
-    
+
     const displayNames = itemNames.join(', ');
     const moreItems = selectedItems.length > 5 ? ` and ${selectedItems.length - 5} more items` : '';
-    
+
     if (confirm(`Are you sure you want to delete ${selectedItems.length} item(s)?\n\nItems to delete: ${displayNames}${moreItems}\n\nThis action cannot be undone.`)) {
       try {
         setIsProcessing(true);
@@ -157,8 +157,8 @@ const AdminDashboard: React.FC = () => {
   };
 
   const handleSelectItem = (itemId: string) => {
-    setSelectedItems(prev => 
-      prev.includes(itemId) 
+    setSelectedItems(prev =>
+      prev.includes(itemId)
         ? prev.filter(id => id !== itemId)
         : [...prev, itemId]
     );
@@ -228,7 +228,6 @@ const AdminDashboard: React.FC = () => {
 
   // Dashboard Stats
   const totalItems = menuItems.length;
-  const popularItems = menuItems.filter(item => item.popular).length;
   const availableItems = menuItems.filter(item => item.available).length;
   const restaurantCount = adminRestaurants.length;
   const activeRestaurants = adminRestaurants.filter(r => r.active).length;
@@ -239,7 +238,7 @@ const AdminDashboard: React.FC = () => {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === 'ERunCalinanDelivery@Admin!2025') {
+    if (password === 'Easy Buy Delivery@Admin!2025') {
       setIsAuthenticated(true);
       localStorage.setItem('beracah_admin_auth', 'true');
       setLoginError('');
@@ -260,14 +259,12 @@ const AdminDashboard: React.FC = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="bg-white rounded-xl shadow-lg p-8 w-full max-w-md">
-          <div className="text-center mb-8">
-            <div className="mx-auto w-16 h-16 bg-green-600 rounded-full flex items-center justify-center mb-4">
-              <Lock className="h-8 w-8 text-white" />
-            </div>
-            <h1 className="text-2xl font-playfair font-semibold text-black">Admin Access</h1>
-            <p className="text-gray-600 mt-2">Enter password to access the admin dashboard</p>
+          <div className="mx-auto w-20 h-20 bg-brand-light rounded-2xl flex items-center justify-center mb-6 ring-4 ring-brand-primary/10 overflow-hidden text-brand-primary">
+            <ShoppingBag className="w-12 h-12" />
           </div>
-          
+          <h1 className="text-2xl font-pretendard font-bold text-brand-charcoal">Easy Buy Delivery</h1>
+          <p className="text-gray-500 mt-2">Admin Portal Access</p>
+
           <form onSubmit={handleLogin}>
             <div className="mb-6">
               <label className="block text-sm font-medium text-black mb-2">Password</label>
@@ -283,10 +280,10 @@ const AdminDashboard: React.FC = () => {
                 <p className="text-red-500 text-sm mt-2">{loginError}</p>
               )}
             </div>
-            
+
             <button
               type="submit"
-              className="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition-colors duration-200 font-medium"
+              className="w-full bg-brand-primary text-white py-3 rounded-lg hover:bg-brand-secondary transition-all duration-200 font-bold shadow-lg shadow-brand-primary/20 active:scale-[0.98]"
             >
               Access Dashboard
             </button>
@@ -322,7 +319,7 @@ const AdminDashboard: React.FC = () => {
                   <ArrowLeft className="h-5 w-5" />
                   <span>Back</span>
                 </button>
-                <h1 className="text-2xl font-playfair font-semibold text-black">
+                <h1 className="text-2xl font-brand font-semibold text-black">
                   {currentView === 'add' ? 'Add New Item' : 'Edit Item'}
                 </h1>
               </div>
@@ -411,7 +408,7 @@ const AdminDashboard: React.FC = () => {
 
             {/* Discount Pricing Section */}
             <div className="mb-8">
-              <h3 className="text-lg font-playfair font-medium text-black mb-4">Discount Pricing</h3>
+              <h3 className="text-lg font-brand font-medium text-black mb-4">Discount Pricing</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-black mb-2">Discount Price</label>
@@ -482,7 +479,7 @@ const AdminDashboard: React.FC = () => {
             {/* Variations Section */}
             <div className="mb-8">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-playfair font-medium text-black">Size Variations</h3>
+                <h3 className="text-lg font-brand font-medium text-black">Size Variations</h3>
                 <button
                   onClick={addVariation}
                   className="flex items-center space-x-2 px-3 py-2 bg-cream-100 text-black rounded-lg hover:bg-cream-200 transition-colors duration-200"
@@ -521,7 +518,7 @@ const AdminDashboard: React.FC = () => {
             {/* Add-ons Section */}
             <div className="mb-8">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-playfair font-medium text-black">Add-ons</h3>
+                <h3 className="text-lg font-brand font-medium text-black">Add-ons</h3>
                 <button
                   onClick={addAddOn}
                   className="flex items-center space-x-2 px-3 py-2 bg-cream-100 text-black rounded-lg hover:bg-cream-200 transition-colors duration-200"
@@ -586,7 +583,7 @@ const AdminDashboard: React.FC = () => {
                   <ArrowLeft className="h-5 w-5" />
                   <span>Dashboard</span>
                 </button>
-                <h1 className="text-2xl font-playfair font-semibold text-black">Menu Items</h1>
+                <h1 className="text-2xl font-brand font-semibold text-black">Menu Items</h1>
               </div>
               <div className="flex items-center space-x-3">
                 {showBulkActions && (
@@ -623,7 +620,7 @@ const AdminDashboard: React.FC = () => {
                   <h3 className="text-lg font-medium text-black mb-1">Bulk Actions</h3>
                   <p className="text-sm text-gray-600">{selectedItems.length} item(s) selected</p>
                 </div>
-                
+
                 <div className="flex flex-col sm:flex-row gap-3">
                   {/* Change Category */}
                   <div className="flex items-center space-x-2">
@@ -644,7 +641,7 @@ const AdminDashboard: React.FC = () => {
                       ))}
                     </select>
                   </div>
-                  
+
                   {/* Remove Items */}
                   <button
                     onClick={handleBulkRemove}
@@ -654,7 +651,7 @@ const AdminDashboard: React.FC = () => {
                     <Trash2 className="h-4 w-4" />
                     <span>{isProcessing ? 'Removing...' : 'Remove Selected'}</span>
                   </button>
-                  
+
                   {/* Clear Selection */}
                   <button
                     onClick={() => {
@@ -768,11 +765,10 @@ const AdminDashboard: React.FC = () => {
                               Popular
                             </span>
                           )}
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            item.available 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-red-100 text-red-800'
-                          }`}>
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${item.available
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
+                            }`}>
                             {item.available ? 'Available' : 'Unavailable'}
                           </span>
                         </div>
@@ -832,14 +828,14 @@ const AdminDashboard: React.FC = () => {
                       </button>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1 min-w-0">
                       <h3 className="font-medium text-gray-900 truncate">{item.name}</h3>
                       <p className="text-sm text-gray-500 mt-1 line-clamp-2">{item.description}</p>
                     </div>
                   </div>
-                  
+
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <span className="text-gray-500">Category:</span>
@@ -869,7 +865,7 @@ const AdminDashboard: React.FC = () => {
                       <span className="ml-1 text-gray-900">{item.addOns?.length || 0}</span>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center justify-between mt-3">
                     <div className="flex items-center space-x-2">
                       {item.popular && (
@@ -877,11 +873,10 @@ const AdminDashboard: React.FC = () => {
                           Popular
                         </span>
                       )}
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        item.available 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
-                      }`}>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${item.available
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-red-100 text-red-800'
+                        }`}>
                         {item.available ? 'Available' : 'Unavailable'}
                       </span>
                     </div>
@@ -920,7 +915,7 @@ const AdminDashboard: React.FC = () => {
                   <ArrowLeft className="h-5 w-5" />
                   <span>Dashboard</span>
                 </button>
-                <h1 className="text-2xl font-playfair font-semibold text-black">Site Settings</h1>
+                <h1 className="text-2xl font-brand font-semibold text-black">Site Settings</h1>
               </div>
             </div>
           </div>
@@ -951,10 +946,13 @@ const AdminDashboard: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
             <div className="flex items-center space-x-3">
-              <div className="bg-green-600 p-2 rounded-lg">
-                <Lock className="h-6 w-6 text-white" />
+              <div className="bg-brand-primary p-1.5 rounded-lg shadow-sm flex items-center justify-center text-white">
+                <ShoppingBag className="h-6 w-6" />
               </div>
-              <h1 className="text-2xl font-playfair font-bold text-gray-900">Admin Dashboard</h1>
+              <div className="flex flex-col">
+                <h1 className="text-xl font-pretendard font-bold text-brand-charcoal leading-none">Easy Buy</h1>
+                <span className="text-xs text-brand-primary font-medium">Delivery Dashboard</span>
+              </div>
             </div>
             <button
               onClick={handleLogout}
@@ -968,11 +966,11 @@ const AdminDashboard: React.FC = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        
+
         {/* Welcome Section */}
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-3xl font-playfair font-bold text-gray-900">Overview</h2>
+            <h2 className="text-3xl font-brand font-bold text-gray-900">Overview</h2>
             <p className="text-gray-500 mt-1">Welcome back, here's what's happening today.</p>
           </div>
           <div className="text-sm text-gray-500 bg-white px-4 py-2 rounded-full shadow-sm border border-gray-100">
@@ -1016,8 +1014,8 @@ const AdminDashboard: React.FC = () => {
             </div>
             <div className="mt-4 flex items-center text-sm">
               <div className="w-full bg-gray-100 rounded-full h-1.5">
-                <div 
-                  className="bg-orange-500 h-1.5 rounded-full" 
+                <div
+                  className="bg-orange-500 h-1.5 rounded-full"
                   style={{ width: `${(activeRestaurants / restaurantCount) * 100}%` }}
                 ></div>
               </div>
@@ -1045,7 +1043,7 @@ const AdminDashboard: React.FC = () => {
 
         {/* Quick Actions Grid */}
         <div>
-          <h3 className="text-xl font-playfair font-bold text-gray-900 mb-6">Quick Actions</h3>
+          <h3 className="text-xl font-brand font-bold text-gray-900 mb-6">Quick Actions</h3>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <button
               onClick={() => setCurrentView('add')}
@@ -1056,7 +1054,7 @@ const AdminDashboard: React.FC = () => {
               </div>
               <span className="font-medium text-gray-900 text-center">Add Item</span>
             </button>
-            
+
             <button
               onClick={() => setCurrentView('categories')}
               className="flex flex-col items-center justify-center p-6 bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md hover:border-blue-200 hover:bg-blue-50/30 transition-all duration-300 group"
@@ -1112,19 +1110,19 @@ const AdminDashboard: React.FC = () => {
         {/* Categories Overview */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-playfair font-bold text-gray-900">Categories Overview</h3>
-            <button 
+            <h3 className="text-xl font-brand font-bold text-gray-900">Categories Overview</h3>
+            <button
               onClick={() => setCurrentView('categories')}
               className="text-sm font-medium text-green-600 hover:text-green-700 hover:underline"
             >
               View Details
             </button>
           </div>
-          
+
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {categoryCounts.map((category) => (
-              <div 
-                key={category.id} 
+              <div
+                key={category.id}
                 className="flex items-center p-4 rounded-xl bg-gray-50 border border-gray-100 hover:border-green-200 hover:shadow-sm transition-all duration-200"
               >
                 <span className="text-2xl mr-3">{category.icon}</span>

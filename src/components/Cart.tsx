@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trash2, Plus, Minus, ArrowLeft } from 'lucide-react';
+import { Trash2, Plus, Minus, ArrowLeft, ShoppingBag } from 'lucide-react';
 import { CartItem } from '../types';
 
 interface CartProps {
@@ -25,13 +25,8 @@ const Cart: React.FC<CartProps> = ({
     return (
       <div className="max-w-4xl mx-auto px-4 py-12">
         <div className="text-center py-16">
-          <div className="mb-6 flex justify-center">
-            <img
-              src="/erun.jpg"
-              alt="E-Run Calinan Delivery"
-              className="w-24 h-24 rounded-full shadow-md object-cover"
-              loading="lazy"
-            />
+          <div className="mb-6 flex justify-center text-brand-primary">
+            <ShoppingBag className="w-24 h-24" />
           </div>
           <h2 className="text-2xl font-playfair font-medium text-black mb-2">Your cart is empty</h2>
           <p className="text-gray-600 mb-6">Add some delicious items to get started!</p>
@@ -76,8 +71,8 @@ const Cart: React.FC<CartProps> = ({
                 )}
                 {item.selectedAddOns && item.selectedAddOns.length > 0 && (
                   <p className="text-sm text-gray-500 mb-1">
-                    Add-ons: {item.selectedAddOns.map(addOn => 
-                      addOn.quantity && addOn.quantity > 1 
+                    Add-ons: {item.selectedAddOns.map(addOn =>
+                      addOn.quantity && addOn.quantity > 1
                         ? `${addOn.name} x${addOn.quantity}`
                         : addOn.name
                     ).join(', ')}
@@ -85,7 +80,7 @@ const Cart: React.FC<CartProps> = ({
                 )}
                 <p className="text-lg font-semibold text-black">₱{item.totalPrice} each</p>
               </div>
-              
+
               <div className="flex items-center space-x-4 ml-4">
                 <div className="flex items-center space-x-3 bg-green-100 rounded-full p-1 border border-green-200">
                   <button
@@ -102,11 +97,11 @@ const Cart: React.FC<CartProps> = ({
                     <Plus className="h-4 w-4 text-gray-700" />
                   </button>
                 </div>
-                
+
                 <div className="text-right">
                   <p className="text-lg font-semibold text-black">₱{item.totalPrice * item.quantity}</p>
                 </div>
-                
+
                 <button
                   onClick={() => removeFromCart(item.id)}
                   className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-all duration-200"
@@ -124,7 +119,7 @@ const Cart: React.FC<CartProps> = ({
           <span>Total:</span>
           <span>₱{parseFloat(getTotalPrice().toString()).toFixed(2)}</span>
         </div>
-        
+
         <button
           onClick={onCheckout}
           className="w-full bg-green-primary text-white py-4 rounded-xl hover:bg-green-dark transition-all duration-200 transform hover:scale-[1.02] font-medium text-lg shadow-lg"

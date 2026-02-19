@@ -10,7 +10,7 @@ export const useMenu = () => {
   const fetchMenuItems = async () => {
     try {
       setLoading(true);
-      
+
       // Fetch general menu items (not restaurant-specific) with their variations and add-ons
       const { data: items, error: itemsError } = await supabase
         .from('menu_items')
@@ -29,11 +29,11 @@ export const useMenu = () => {
         const now = new Date();
         const discountStart = item.discount_start_date ? new Date(item.discount_start_date) : null;
         const discountEnd = item.discount_end_date ? new Date(item.discount_end_date) : null;
-        
-        const isDiscountActive = item.discount_active && 
-          (!discountStart || now >= discountStart) && 
+
+        const isDiscountActive = item.discount_active &&
+          (!discountStart || now >= discountStart) &&
           (!discountEnd || now <= discountEnd);
-        
+
         // Calculate effective price
         const effectivePrice = isDiscountActive && item.discount_price ? item.discount_price : item.base_price;
 
@@ -52,12 +52,12 @@ export const useMenu = () => {
           discountActive: item.discount_active || false,
           effectivePrice,
           isOnDiscount: isDiscountActive,
-          variations: item.variations?.map(v => ({
+          variations: item.variations?.map((v: any) => ({
             id: v.id,
             name: v.name,
             price: v.price
           })) || [],
-          addOns: item.add_ons?.map(a => ({
+          addOns: item.add_ons?.map((a: any) => ({
             id: a.id,
             name: a.name,
             price: a.price,
@@ -140,22 +140,23 @@ export const useMenu = () => {
 
   const updateMenuItem = async (id: string, updates: Partial<MenuItem>) => {
     try {
-      // Update menu item
+      // Build update object dynamically
+      const updateData: any = {};
+      if (updates.name !== undefined) updateData.name = updates.name;
+      if (updates.description !== undefined) updateData.description = updates.description;
+      if (updates.basePrice !== undefined) updateData.base_price = updates.basePrice;
+      if (updates.category !== undefined) updateData.category = updates.category;
+      if (updates.popular !== undefined) updateData.popular = updates.popular;
+      if (updates.available !== undefined) updateData.available = updates.available;
+      if (updates.image !== undefined) updateData.image_url = updates.image || null;
+      if (updates.discountPrice !== undefined) updateData.discount_price = updates.discountPrice || null;
+      if (updates.discountStartDate !== undefined) updateData.discount_start_date = updates.discountStartDate || null;
+      if (updates.discountEndDate !== undefined) updateData.discount_end_date = updates.discountEndDate || null;
+      if (updates.discountActive !== undefined) updateData.discount_active = updates.discountActive;
+
       const { error: itemError } = await supabase
         .from('menu_items')
-        .update({
-          name: updates.name,
-          description: updates.description,
-          base_price: updates.basePrice,
-          category: updates.category,
-          popular: updates.popular,
-          available: updates.available,
-          image_url: updates.image || null,
-          discount_price: updates.discountPrice || null,
-          discount_start_date: updates.discountStartDate || null,
-          discount_end_date: updates.discountEndDate || null,
-          discount_active: updates.discountActive
-        })
+        .update(updateData)
         .eq('id', id);
 
       if (itemError) throw itemError;

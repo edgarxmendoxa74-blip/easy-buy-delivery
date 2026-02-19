@@ -32,7 +32,22 @@ export const useRestaurantsAdmin = () => {
         active: item.active,
         sort_order: item.sort_order,
         created_at: item.created_at,
-        updated_at: item.updated_at
+        updated_at: item.updated_at,
+        // New store fields (gracefully handle if columns don't exist yet)
+        store_address: item.store_address || undefined,
+        pin_location: item.pin_location || undefined,
+        contact_person: item.contact_person || undefined,
+        contact_number: item.contact_number || undefined,
+        store_availability: item.store_availability ?? true,
+        markup_type: item.markup_type || 'peso',
+        markup_value: item.markup_value || 0,
+        markup_enabled: item.markup_enabled ?? false,
+        starting_point_lat: item.starting_point_lat || undefined,
+        starting_point_lng: item.starting_point_lng || undefined,
+        starting_point_enabled: item.starting_point_enabled ?? false,
+        convenience_fee: item.convenience_fee || 0,
+        convenience_fee_enabled: item.convenience_fee_enabled ?? false,
+        additional_store_fee: item.additional_store_fee || 0
       }));
 
       setRestaurants(formattedRestaurants);
@@ -51,10 +66,10 @@ export const useRestaurantsAdmin = () => {
 
   const addRestaurant = async (restaurant: Omit<Restaurant, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      const maxSortOrder = restaurants.length > 0 
-        ? Math.max(...restaurants.map(r => r.sort_order || 0)) + 1 
+      const maxSortOrder = restaurants.length > 0
+        ? Math.max(...restaurants.map(r => r.sort_order || 0)) + 1
         : restaurants.length;
-      
+
       const { data, error: insertError } = await supabase
         .from('restaurants')
         .insert({
@@ -68,7 +83,21 @@ export const useRestaurantsAdmin = () => {
           delivery_fee: restaurant.deliveryFee || 0,
           description: restaurant.description || null,
           active: restaurant.active ?? true,
-          sort_order: maxSortOrder
+          sort_order: maxSortOrder,
+          store_address: restaurant.store_address || null,
+          pin_location: restaurant.pin_location || null,
+          contact_person: restaurant.contact_person || null,
+          contact_number: restaurant.contact_number || null,
+          store_availability: restaurant.store_availability ?? true,
+          markup_type: restaurant.markup_type || 'peso',
+          markup_value: restaurant.markup_value || 0,
+          markup_enabled: restaurant.markup_enabled ?? false,
+          starting_point_lat: restaurant.starting_point_lat || null,
+          starting_point_lng: restaurant.starting_point_lng || null,
+          starting_point_enabled: restaurant.starting_point_enabled ?? false,
+          convenience_fee: restaurant.convenience_fee || 0,
+          convenience_fee_enabled: restaurant.convenience_fee_enabled ?? false,
+          additional_store_fee: restaurant.additional_store_fee || 0
         })
         .select()
         .single();
@@ -96,6 +125,21 @@ export const useRestaurantsAdmin = () => {
       if (updates.description !== undefined) updateData.description = updates.description || null;
       if (updates.active !== undefined) updateData.active = updates.active;
       if (updates.sort_order !== undefined) updateData.sort_order = updates.sort_order;
+      // New store fields
+      if (updates.store_address !== undefined) updateData.store_address = updates.store_address || null;
+      if (updates.pin_location !== undefined) updateData.pin_location = updates.pin_location || null;
+      if (updates.contact_person !== undefined) updateData.contact_person = updates.contact_person || null;
+      if (updates.contact_number !== undefined) updateData.contact_number = updates.contact_number || null;
+      if (updates.store_availability !== undefined) updateData.store_availability = updates.store_availability;
+      if (updates.markup_type !== undefined) updateData.markup_type = updates.markup_type;
+      if (updates.markup_value !== undefined) updateData.markup_value = updates.markup_value;
+      if (updates.markup_enabled !== undefined) updateData.markup_enabled = updates.markup_enabled;
+      if (updates.starting_point_lat !== undefined) updateData.starting_point_lat = updates.starting_point_lat || null;
+      if (updates.starting_point_lng !== undefined) updateData.starting_point_lng = updates.starting_point_lng || null;
+      if (updates.starting_point_enabled !== undefined) updateData.starting_point_enabled = updates.starting_point_enabled;
+      if (updates.convenience_fee !== undefined) updateData.convenience_fee = updates.convenience_fee;
+      if (updates.convenience_fee_enabled !== undefined) updateData.convenience_fee_enabled = updates.convenience_fee_enabled;
+      if (updates.additional_store_fee !== undefined) updateData.additional_store_fee = updates.additional_store_fee;
 
       const { error: updateError } = await supabase
         .from('restaurants')

@@ -45,17 +45,20 @@ export interface OrderData {
   items: CartItem[];
   customerName: string;
   contactNumber: string;
-  serviceType: 'delivery'; // Only delivery is supported
-  address: string; // Required for delivery
-  paymentMethod: 'gcash' | 'maya' | 'bank-transfer';
+  receiverName?: string;
+  serviceType: 'delivery';
+  address: string;
+  landmark?: string;
+  paymentMethod: 'cod' | 'gcash' | 'maya' | 'bank-transfer';
   referenceNumber?: string;
   total: number;
   notes?: string;
-  landmark?: string;
+  deliveryFee: number;
+  convenienceFee: number;
 }
 
-export type PaymentMethod = 'gcash' | 'maya' | 'bank-transfer';
-export type ServiceType = 'delivery'; // Only delivery is supported
+export type PaymentMethod = 'cod' | 'gcash' | 'maya' | 'bank-transfer';
+export type ServiceType = 'delivery';
 
 // Site Settings Types
 export interface SiteSetting {
@@ -70,11 +73,16 @@ export interface SiteSettings {
   site_name: string;
   site_logo: string;
   site_description: string;
+  site_tagline: string;
+  address: string;
+  facebook_url: string;
+  facebook_handle: string;
   currency: string;
   currency_code: string;
+  messenger_id: string;
 }
 
-// Restaurant Types
+// Store / Restaurant Types
 export interface Restaurant {
   id: string;
   name: string;
@@ -82,14 +90,29 @@ export interface Restaurant {
   image: string;
   rating: number;
   reviewCount: number;
-  deliveryTime: string; // e.g., "30-45 mins", "45-60 mins"
-  deliveryFee: number; // e.g., 0
+  deliveryTime: string;
+  deliveryFee: number;
   description?: string;
   logo?: string;
   active: boolean;
   sort_order?: number;
   created_at?: string;
   updated_at?: string;
+  // New Store fields
+  store_address?: string;
+  pin_location?: { lat: number; lng: number };
+  contact_person?: string;
+  contact_number?: string;
+  store_availability?: boolean;
+  markup_type?: 'peso' | 'percentage';
+  markup_value?: number;
+  markup_enabled?: boolean;
+  starting_point_lat?: number;
+  starting_point_lng?: number;
+  starting_point_enabled?: boolean;
+  convenience_fee?: number;
+  convenience_fee_enabled?: boolean;
+  additional_store_fee?: number;
 }
 
 // Restaurant Menu Item (different from general MenuItem)
@@ -107,6 +130,17 @@ export interface RestaurantMenuItem {
   addOns?: AddOn[];
   discountPrice?: number;
   discountStartDate?: string;
+  discountEndDate?: string;
+  discountActive?: boolean;
+  effectivePrice?: number;
+  isOnDiscount?: boolean;
+}
+
+// Padala/Pabili Booking
+export interface PadalaBooking {
+  id: string;
+  customer_name: string;
+  contact_number: string;
   pickup_address: string;
   delivery_address: string;
   item_description: string;
@@ -125,12 +159,27 @@ export interface RestaurantMenuItem {
   updated_at: string;
 }
 
+// Pabili/Padala Order Item
+export interface PabiliOrderItem {
+  id: string;
+  item_description: string;
+  quantity: number;
+}
+
+// Pabili/Padala Store Order (one per store)
+export interface PabiliStoreOrder {
+  id: string;
+  store_name: string;
+  store_address: string;
+  items: PabiliOrderItem[];
+}
+
 // Request
 export interface Request {
   id: string;
   customer_name: string;
   contact_number: string;
-  request_type: string; // e.g., 'custom_order', 'special_request', 'complaint', 'suggestion'
+  request_type: string;
   subject: string;
   description: string;
   address?: string;

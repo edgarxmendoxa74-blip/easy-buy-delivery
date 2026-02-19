@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { ArrowLeft, Send } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useGoogleMaps } from '../hooks/useGoogleMaps';
-import Header from './Header';
+import { useSiteSettings } from '../hooks/useSiteSettings';
+
 
 interface RequestsProps {
   onBack: () => void;
@@ -10,6 +11,7 @@ interface RequestsProps {
 
 const Requests: React.FC<RequestsProps> = ({ onBack }) => {
   const { calculateDistanceBetweenAddresses, calculateDeliveryFee } = useGoogleMaps();
+  const { siteSettings } = useSiteSettings();
 
   // Angkas/Padala form data
   const [angkasData, setAngkasData] = useState({
@@ -118,10 +120,11 @@ ${angkasData.description}
 Thank you for your Angkas/Padala request. We will get back to you soon! 🛵`;
 
       const encodedMessage = encodeURIComponent(message);
-      const messengerUrl = `https://m.me/375641885639863?text=${encodedMessage}`;
-      
+      const messengerId = siteSettings?.messenger_id || '61558704207383';
+      const messengerUrl = `https://m.me/${messengerId}?text=${encodedMessage}`;
+
       window.open(messengerUrl, '_blank');
-      
+
       // Reset form
       setAngkasData({
         customer_name: '',
@@ -136,150 +139,143 @@ Thank you for your Angkas/Padala request. We will get back to you soon! 🛵`;
       setDeliveryFee(60);
     } catch (error) {
       console.error('Error submitting request:', error);
-      alert('Failed to submit request. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Please try again.';
+      alert(`Failed to submit request: ${errorMessage}\n\nNote: If the error mentions 'relation "requests" does not exist', please make sure you have run the database migration.`);
     } finally {
       setIsSubmittingAngkas(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-offwhite font-inter">
-      <Header 
-        cartItemsCount={0}
-        onCartClick={() => {}}
-        onMenuClick={onBack}
-      />
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <button
+        onClick={onBack}
+        className="flex items-center space-x-2 text-gray-600 hover:text-black transition-colors duration-200 mb-6"
+      >
+        <ArrowLeft className="h-5 w-5" />
+        <span>Back to Home</span>
+      </button>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col items-center mb-8">
-          <button
-            onClick={onBack}
-            className="inline-flex items-center space-x-2 px-4 py-2 rounded-full bg-green-primary text-white text-sm sm:text-base font-medium shadow hover:bg-green-dark transition-colors duration-200"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            <span>Back to Services</span>
-          </button>
-          <h1 className="mt-4 text-2xl sm:text-3xl font-bold text-black flex items-center gap-2 text-center">
-            🛵 Angkas
-          </h1>
+      <form onSubmit={handleAngkasSubmit} className="bg-white rounded-xl shadow-sm p-6 md:p-8 space-y-6">
+        <div className="text-center mb-6">
+          <h1 className="text-3xl font-bold text-brand-charcoal">🛵 Angkas Service</h1>
+          <p className="text-gray-500 mt-1">Book a quick motorcycle ride across the city</p>
         </div>
 
-        <form onSubmit={handleAngkasSubmit} className="bg-white rounded-xl shadow-sm p-6 md:p-8 space-y-6">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Your Information</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
-                <input
-                  type="text"
-                  name="customer_name"
-                  value={angkasData.customer_name}
-                  onChange={handleAngkasInputChange}
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-primary focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Contact Number *</label>
-                <input
-                  type="tel"
-                  name="contact_number"
-                  value={angkasData.contact_number}
-                  onChange={handleAngkasInputChange}
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-primary focus:border-transparent"
-                />
-              </div>
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Your Information</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
+              <input
+                type="text"
+                name="customer_name"
+                value={angkasData.customer_name}
+                onChange={handleAngkasInputChange}
+                required
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-primary focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Contact Number *</label>
+              <input
+                type="tel"
+                name="contact_number"
+                value={angkasData.contact_number}
+                onChange={handleAngkasInputChange}
+                required
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-primary focus:border-transparent"
+              />
             </div>
           </div>
+        </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Service Type *</label>
-            <select
-              name="request_type"
-              value={angkasData.request_type}
-              onChange={handleAngkasInputChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-primary focus:border-transparent"
-            >
-              {requestTypes.map(type => (
-                <option key={type.value} value={type.value}>
-                  {type.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Subject *</label>
-            <input
-              type="text"
-              name="subject"
-              value={angkasData.subject}
-              onChange={handleAngkasInputChange}
-              required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-primary focus:border-transparent"
-              placeholder="Brief summary of your request (e.g., Need Angkas ride)"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Description *</label>
-            <textarea
-              name="description"
-              value={angkasData.description}
-              onChange={handleAngkasInputChange}
-              required
-              rows={6}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-primary focus:border-transparent"
-              placeholder="Please provide detailed information about your Angkas request (pickup location, destination, time needed, etc.)"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Pickup Address *</label>
-            <textarea
-              name="pickup_address"
-              value={angkasData.pickup_address}
-              onChange={handleAngkasInputChange}
-              required
-              rows={3}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-primary focus:border-transparent"
-              placeholder="Where to pick up (complete address)"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Drop-off Address *</label>
-            <textarea
-              name="dropoff_address"
-              value={angkasData.dropoff_address}
-              onChange={handleAngkasInputChange}
-              onBlur={calculateFee}
-              required
-              rows={3}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-primary focus:border-transparent"
-              placeholder="Where to drop off (complete address)"
-            />
-            {isCalculating && (
-              <p className="text-xs text-gray-500 mt-1">Calculating distance and fee...</p>
-            )}
-            {!isCalculating && distance !== null && (
-              <p className="text-xs text-green-600 mt-1">
-                Estimated distance: {distance} km • Estimated fee: ₱{deliveryFee.toFixed(2)} (₱60 base + ₱15 every 3km)
-              </p>
-            )}
-          </div>
-
-          <button
-            type="submit"
-            disabled={isSubmittingAngkas}
-            className="w-full py-4 rounded-xl font-medium text-lg transition-all duration-200 transform bg-green-primary text-white hover:bg-green-dark hover:scale-[1.02] shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Service Type *</label>
+          <select
+            name="request_type"
+            value={angkasData.request_type}
+            onChange={handleAngkasInputChange}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-primary focus:border-transparent"
           >
-            <Send className="h-5 w-5" />
-            {isSubmittingAngkas ? 'Submitting...' : 'Submit Angkas Request'}
-          </button>
-        </form>
-      </div>
+            {requestTypes.map(type => (
+              <option key={type.value} value={type.value}>
+                {type.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Subject *</label>
+          <input
+            type="text"
+            name="subject"
+            value={angkasData.subject}
+            onChange={handleAngkasInputChange}
+            required
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-primary focus:border-transparent"
+            placeholder="Brief summary of your request (e.g., Need Angkas ride)"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Description *</label>
+          <textarea
+            name="description"
+            value={angkasData.description}
+            onChange={handleAngkasInputChange}
+            required
+            rows={6}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-primary focus:border-transparent"
+            placeholder="Please provide detailed information about your Angkas request (pickup location, destination, time needed, etc.)"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Pickup Address *</label>
+          <textarea
+            name="pickup_address"
+            value={angkasData.pickup_address}
+            onChange={handleAngkasInputChange}
+            required
+            rows={3}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-primary focus:border-transparent"
+            placeholder="Where to pick up (complete address)"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Drop-off Address *</label>
+          <textarea
+            name="dropoff_address"
+            value={angkasData.dropoff_address}
+            onChange={handleAngkasInputChange}
+            onBlur={calculateFee}
+            required
+            rows={3}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-primary focus:border-transparent"
+            placeholder="Where to drop off (complete address)"
+          />
+          {isCalculating && (
+            <p className="text-xs text-gray-500 mt-1">Calculating distance and fee...</p>
+          )}
+          {!isCalculating && distance !== null && (
+            <p className="text-xs text-green-600 mt-1">
+              Estimated distance: {distance} km • Estimated fee: ₱{deliveryFee.toFixed(2)} (₱60 base + ₱15 every 3km)
+            </p>
+          )}
+        </div>
+
+        <button
+          type="submit"
+          disabled={isSubmittingAngkas}
+          className="w-full py-4 rounded-xl font-medium text-lg transition-all duration-200 transform bg-green-primary text-white hover:bg-green-dark hover:scale-[1.02] shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          <Send className="h-5 w-5" />
+          {isSubmittingAngkas ? 'Submitting...' : 'Submit Angkas Request'}
+        </button>
+      </form>
     </div>
   );
 };

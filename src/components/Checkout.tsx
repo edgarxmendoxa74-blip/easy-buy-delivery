@@ -4,6 +4,7 @@ import { CartItem, PaymentMethod, PromoCode } from '../types';
 import { usePaymentMethods } from '../hooks/usePaymentMethods';
 import { useLocationService } from '../hooks/useLocationService';
 import { usePromoCodes } from '../hooks/usePromoCodes';
+import { useSiteSettings } from '../hooks/useSiteSettings';
 import DeliveryMap from './DeliveryMap';
 
 interface CheckoutProps {
@@ -16,14 +17,17 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
   const { paymentMethods } = usePaymentMethods();
   const { calculateDistance, calculateDeliveryFee, isWithinDeliveryArea, restaurantLocation, maxDeliveryRadius, geocodeAddressOSM, getRouteOSRM } = useLocationService();
   const { validatePromoCode, incrementUsage } = usePromoCodes();
+  const { siteSettings } = useSiteSettings();
 
   const [step, setStep] = useState<'details' | 'payment'>('details');
   const [customerName, setCustomerName] = useState('');
   const [contactNumber, setContactNumber] = useState('');
+  const [receiverName, setReceiverName] = useState('');
   const [address, setAddress] = useState('');
   const [landmark, setLandmark] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('gcash');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cod');
   const [notes, setNotes] = useState('');
+  const [convenienceFee, setConvenienceFee] = useState<number>(0);
   // Delivery fee calculation
   const [distance, setDistance] = useState<number | null>(null);
   const [deliveryFee, setDeliveryFee] = useState<number>(65); // Default base fee
@@ -47,7 +51,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
 
 
   const [ipAddress, setIpAddress] = useState<string | undefined>(undefined);
-  
+
   // Ref to skip next geocode update (prevent overwriting precise coords with address geocode)
   const skipNextGeocode = React.useRef(false);
   const prevAddress = React.useRef(address);
@@ -79,7 +83,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
         const { latitude, longitude } = position.coords;
         setShouldFitBounds(true);
         setCustomerLocation({ lat: latitude, lng: longitude });
-        
+
         // Reverse geocode to get address
         try {
           const response = await fetch(
@@ -94,7 +98,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
         } catch (err) {
           console.error('Reverse geocoding error:', err);
         }
-        
+
         // Calculate distance
         const distanceResult = await calculateDistance(`${latitude},${longitude}`);
         if (distanceResult) {
@@ -105,7 +109,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
             setRouteCoordinates(distanceResult.routeCoordinates);
           }
         }
-        
+
         setIsGettingLocation(false);
       },
       (error) => {
@@ -127,19 +131,19 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
     setShouldFitBounds(false); // Don't auto-zoom when manually selecting/dragging
     setCustomerLocation({ lat, lng });
     setIsCalculatingDistance(true);
-    
+
     try {
       // Reverse geocode to get address
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
-        
+
         const response = await fetch(
           `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
           { signal: controller.signal }
         );
         clearTimeout(timeoutId);
-        
+
         const data = await response.json();
         if (data && data.display_name) {
           // skipNextGeocode.current = true; // Already set at start
@@ -149,7 +153,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
       } catch (err) {
         console.error('Reverse geocoding error:', err);
       }
-      
+
       // Calculate distance
       const distanceResult = await calculateDistance(`${lat},${lng}`);
       if (distanceResult) {
@@ -162,14 +166,14 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
 
         // Check if within area
         if (distanceResult.distance > maxDeliveryRadius) {
-            setIsWithinArea(false);
-            setAreaCheckError(`We only deliver to addresses within ${maxDeliveryRadius}km from our restaurant location.`);
+          setIsWithinArea(false);
+          setAreaCheckError(`We only deliver to addresses within ${maxDeliveryRadius}km from our restaurant location.`);
         } else {
-            setIsWithinArea(true);
-            setAreaCheckError(null);
+          setIsWithinArea(true);
+          setAreaCheckError(null);
         }
       }
-      
+
       // Update route
       await updateRoute(lat, lng);
     } finally {
@@ -183,7 +187,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
     // Only run if address actually changed
     if (address.trim() && address !== prevAddress.current) {
       prevAddress.current = address;
-      
+
       const timeoutId = setTimeout(async () => {
         if (skipNextGeocode.current) {
           skipNextGeocode.current = false;
@@ -192,16 +196,16 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
 
         setIsCalculatingDistance(true);
         setAreaCheckError(null);
-        
+
         try {
           // First check if address is within delivery area
           const areaCheck = await isWithinDeliveryArea(address);
           setIsWithinArea(areaCheck.within);
-          
+
           if (areaCheck.error) {
             setAreaCheckError(areaCheck.error);
           }
-          
+
           // Only calculate distance and fee if address is within delivery area
           if (areaCheck.within) {
             const result = await calculateDistance(address);
@@ -216,7 +220,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
               setDistance(null);
               setDeliveryFee(calculateDeliveryFee(null));
             }
-            
+
 
             // Get coordinates for the address to show on map
             try {
@@ -249,25 +253,25 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
     }
   }, [address, calculateDistance, calculateDeliveryFee, isWithinDeliveryArea]);
 
-  // Calculate total price including delivery fee and discount
+  // Calculate total price including delivery fee, convenience fee, and discount
   const finalTotalPrice = React.useMemo(() => {
-    return Math.max(0, totalPrice + deliveryFee - discountAmount);
-  }, [totalPrice, deliveryFee, discountAmount]);
-  
+    return Math.max(0, totalPrice + deliveryFee + convenienceFee - discountAmount);
+  }, [totalPrice, deliveryFee, convenienceFee, discountAmount]);
+
   // Alias for consistency with other parts of the code
   const grandTotal = finalTotalPrice;
 
   const handleApplyPromo = async () => {
     if (!promoCodeInput.trim()) return;
-    
+
     setIsValidatingPromo(true);
     setPromoError(null);
-    
+
     try {
       // Determine what amount to validate against (usually subtotal for food items)
       const { valid, message, promoCode } = await validatePromoCode(
-        promoCodeInput, 
-        totalPrice, 
+        promoCodeInput,
+        totalPrice,
         'food', // Default to food check
         ipAddress
       );
@@ -279,31 +283,31 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
       } else {
         // Calculate actual discount based on applicability
         let calculatedDiscount = 0;
-        
+
         if (promoCode.applicable_to === 'delivery_fee') {
-           // Apply to delivery fee
-           if (promoCode.discount_type === 'percentage') {
-             calculatedDiscount = (deliveryFee * promoCode.discount_value) / 100;
-           } else {
-             calculatedDiscount = promoCode.discount_value;
-           }
-           // Cap at delivery fee amount
-           calculatedDiscount = Math.min(calculatedDiscount, deliveryFee);
+          // Apply to delivery fee
+          if (promoCode.discount_type === 'percentage') {
+            calculatedDiscount = (deliveryFee * promoCode.discount_value) / 100;
+          } else {
+            calculatedDiscount = promoCode.discount_value;
+          }
+          // Cap at delivery fee amount
+          calculatedDiscount = Math.min(calculatedDiscount, deliveryFee);
         } else if (promoCode.applicable_to === 'food_items') {
-           // Apply to subtotal
-           if (promoCode.discount_type === 'percentage') {
-             calculatedDiscount = (totalPrice * promoCode.discount_value) / 100;
-           } else {
-             calculatedDiscount = promoCode.discount_value;
-           }
+          // Apply to subtotal
+          if (promoCode.discount_type === 'percentage') {
+            calculatedDiscount = (totalPrice * promoCode.discount_value) / 100;
+          } else {
+            calculatedDiscount = promoCode.discount_value;
+          }
         } else {
-           // Apply to total (subtotal + delivery fee)
-           const total = totalPrice + deliveryFee;
-           if (promoCode.discount_type === 'percentage') {
-             calculatedDiscount = (total * promoCode.discount_value) / 100;
-           } else {
-             calculatedDiscount = promoCode.discount_value;
-           }
+          // Apply to total (subtotal + delivery fee)
+          const total = totalPrice + deliveryFee;
+          if (promoCode.discount_type === 'percentage') {
+            calculatedDiscount = (total * promoCode.discount_value) / 100;
+          } else {
+            calculatedDiscount = promoCode.discount_value;
+          }
         }
 
         // Apply max discount limit if exists
@@ -354,10 +358,10 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
     }
 
     const orderDetails = `
-🛒 E-Run Calinan Delivery ORDER
+🛒 Easy Buy Delivery ORDER
 
 👤 Customer: ${customerName}
-📞 Contact: ${contactNumber}
+📞 Contact: ${contactNumber}${receiverName ? `\n📋 Receiver: ${receiverName}` : ''}
 📍 Service: Delivery
 🏠 Address: ${address}${landmark ? `\n🗺️ Landmark: ${landmark}` : ''}
 
@@ -367,39 +371,39 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
 ${Object.entries(groupedItems).map(([restaurantName, items]) => `
 🏪 ${restaurantName}
 ${items.map(item => {
-  let itemDetails = `• ${item.name}`;
-  if (item.selectedVariation) {
-    itemDetails += ` (${item.selectedVariation.name})`;
-  }
-  if (item.selectedAddOns && item.selectedAddOns.length > 0) {
-    itemDetails += ` + ${item.selectedAddOns.map(addOn => 
-      addOn.quantity && addOn.quantity > 1 
-        ? `${addOn.name} x${addOn.quantity}`
-        : addOn.name
-    ).join(', ')}`;
-  }
-  itemDetails += ` x${item.quantity} - ₱${item.totalPrice * item.quantity}`;
-  return itemDetails;
-}).join('\n')}`).join('\n')}
+      let itemDetails = `• ${item.category ? item.category + ' | ' : ''}${item.name}`;
+      if (item.selectedVariation) {
+        itemDetails += ` | ${item.selectedVariation.name}`;
+      }
+      if (item.selectedAddOns && item.selectedAddOns.length > 0) {
+        itemDetails += ` | ${item.selectedAddOns.map(addOn =>
+          addOn.quantity && addOn.quantity > 1
+            ? `${addOn.name} x${addOn.quantity}`
+            : addOn.name
+        ).join(', ')}`;
+      }
+      itemDetails += ` | Qty: ${item.quantity} | SRP: ₱${item.totalPrice} | Total: ₱${item.totalPrice * item.quantity}`;
+      return itemDetails;
+    }).join('\n')}`).join('\n')}
 
 💰 Subtotal: ₱${totalPrice}
-🛵 Delivery Fee: ₱${deliveryFee.toFixed(2)}${distance !== null ? ` (${distance} km)` : ''}
+🛵 Delivery Fee: ₱${deliveryFee.toFixed(2)}${distance !== null ? ` (${distance} km)` : ''}${convenienceFee > 0 ? `\n🏷️ Convenience Fee: ₱${convenienceFee.toFixed(2)}` : ''}
 ${appliedPromo ? `🏷️ Promo Code: ${appliedPromo.code} (-₱${discountAmount.toFixed(2)})` : ''}
-💰 TOTAL: ₱${grandTotal.toFixed(2)}
+💰 TOTAL BILL: ₱${grandTotal.toFixed(2)}
 
 ⚠️ Notice: The price will be different at the store or restaurant.
 
-💳 Payment: ${selectedPaymentMethod?.name || paymentMethod}
-📸 Payment Screenshot: Please attach your payment receipt screenshot
+💳 Payment: ${paymentMethod === 'cod' ? 'Cash on Delivery (COD)' : (selectedPaymentMethod?.name || paymentMethod)}${paymentMethod !== 'cod' ? '\n📸 Payment Screenshot: Please attach your payment receipt screenshot' : ''}
 
 ${notes ? `📝 Notes: ${notes}` : ''}
 
-Please confirm this order to proceed. Thank you for choosing E-Run Calinan Delivery! 🛵
+Please confirm this order to proceed. Thank you for choosing Easy Buy Delivery! 🛵
     `.trim();
 
     const encodedMessage = encodeURIComponent(orderDetails);
-    const messengerUrl = `https://m.me/375641885639863?text=${encodedMessage}`;
-    
+    const messengerId = siteSettings?.messenger_id || '61558704207383';
+    const messengerUrl = `https://m.me/${messengerId}?text=${encodedMessage}`;
+
     window.open(messengerUrl, '_blank');
   };
 
@@ -423,7 +427,7 @@ Please confirm this order to proceed. Thank you for choosing E-Run Calinan Deliv
           {/* Order Summary */}
           <div className="bg-white rounded-xl shadow-sm p-6">
             <h2 className="text-2xl font-noto font-medium text-black mb-6">Order Summary</h2>
-            
+
             <div className="space-y-6 mb-6">
               {Object.entries(groupedItems).map(([restaurantName, items]) => (
                 <div key={restaurantName}>
@@ -452,7 +456,7 @@ Please confirm this order to proceed. Thank you for choosing E-Run Calinan Deliv
                 </div>
               ))}
             </div>
-            
+
             <div className="border-t border-gray-200 pt-4 space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-600">Subtotal:</span>
@@ -471,68 +475,74 @@ Please confirm this order to proceed. Thank you for choosing E-Run Calinan Deliv
                 </span>
                 <span className="text-gray-900 font-semibold">₱{deliveryFee.toFixed(2)}</span>
               </div>
-              
+              {convenienceFee > 0 && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600">Convenience Fee:</span>
+                  <span className="text-gray-900">₱{convenienceFee.toFixed(2)}</span>
+                </div>
+              )}
+
               {/* Promo Code Section */}
               <div className="py-3 border-y border-gray-100 my-2">
-                  {!appliedPromo ? (
-                    <div className="flex space-x-2">
-                      <div className="relative flex-1">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                          <Tag className="h-4 w-4 text-gray-400" />
-                        </div>
-                        <input
-                          type="text"
-                          value={promoCodeInput}
-                          onChange={(e) => setPromoCodeInput(e.target.value.toUpperCase())}
-                          className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-green-500 focus:border-green-500 sm:text-sm"
-                          placeholder="Enter promo code"
-                        />
+                {!appliedPromo ? (
+                  <div className="flex space-x-2">
+                    <div className="relative flex-1">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Tag className="h-4 w-4 text-gray-400" />
                       </div>
-                      <button
-                        onClick={handleApplyPromo}
-                        disabled={isValidatingPromo || !promoCodeInput}
-                        className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {isValidatingPromo ? '...' : 'Apply'}
-                      </button>
+                      <input
+                        type="text"
+                        value={promoCodeInput}
+                        onChange={(e) => setPromoCodeInput(e.target.value.toUpperCase())}
+                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-green-500 focus:border-green-500 sm:text-sm"
+                        placeholder="Enter promo code"
+                      />
                     </div>
-                  ) : (
-                    <div className="flex items-center justify-between bg-green-50 px-3 py-2 rounded-lg border border-green-100">
-                      <div className="flex items-center space-x-2">
-                        <Tag className="h-4 w-4 text-green-600" />
-                        <div>
-                          <p className="text-sm font-medium text-green-900">
-                            Code: {appliedPromo.code}
-                          </p>
-                          <p className="text-xs text-green-700">
-                            Discount applied
-                          </p>
-                        </div>
+                    <button
+                      onClick={handleApplyPromo}
+                      disabled={isValidatingPromo || !promoCodeInput}
+                      className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isValidatingPromo ? '...' : 'Apply'}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between bg-green-50 px-3 py-2 rounded-lg border border-green-100">
+                    <div className="flex items-center space-x-2">
+                      <Tag className="h-4 w-4 text-green-600" />
+                      <div>
+                        <p className="text-sm font-medium text-green-900">
+                          Code: {appliedPromo.code}
+                        </p>
+                        <p className="text-xs text-green-700">
+                          Discount applied
+                        </p>
                       </div>
-                      <button
-                        onClick={handleRemovePromo}
-                        className="text-gray-400 hover:text-red-500 transition-colors"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
                     </div>
-                  )
-                  }
-                  {promoError && (
-                    <p className="mt-2 text-sm text-red-600 flex items-center">
-                      <span className="mr-1">⚠️</span> {promoError}
-                    </p>
-                  )}
+                    <button
+                      onClick={handleRemovePromo}
+                      className="text-gray-400 hover:text-red-500 transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                )
+                }
+                {promoError && (
+                  <p className="mt-2 text-sm text-red-600 flex items-center">
+                    <span className="mr-1">⚠️</span> {promoError}
+                  </p>
+                )}
               </div>
 
               {discountAmount > 0 && (
-                  <div className="flex justify-between text-green-600 font-medium">
-                    <span>Discount</span>
-                    <span>-₱{discountAmount.toFixed(2)}</span>
-                  </div>
+                <div className="flex justify-between text-green-600 font-medium">
+                  <span>Discount</span>
+                  <span>-₱{discountAmount.toFixed(2)}</span>
+                </div>
               )}
               <div className="flex items-center justify-between text-2xl font-noto font-semibold text-black pt-2 border-t border-gray-200">
-                <span>Total:</span>
+                <span>Total Bill:</span>
                 <span>₱{grandTotal.toFixed(2)}</span>
               </div>
             </div>
@@ -541,11 +551,11 @@ Please confirm this order to proceed. Thank you for choosing E-Run Calinan Deliv
           {/* Customer Details Form */}
           <div className="bg-white rounded-xl shadow-sm p-6">
             <h2 className="text-2xl font-noto font-medium text-black mb-6">Delivery Information</h2>
-            
+
             <form className="space-y-6">
               {/* Customer Information */}
               <div>
-                <label className="block text-sm font-medium text-black mb-2">Full Name *</label>
+                <label className="block text-sm font-medium text-black mb-2">Name *</label>
                 <input
                   type="text"
                   value={customerName}
@@ -553,6 +563,17 @@ Please confirm this order to proceed. Thank you for choosing E-Run Calinan Deliv
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-primary focus:border-transparent transition-all duration-200"
                   placeholder="Enter your full name"
                   required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-black mb-2">Name of Receiver</label>
+                <input
+                  type="text"
+                  value={receiverName}
+                  onChange={(e) => setReceiverName(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-primary focus:border-transparent transition-all duration-200"
+                  placeholder="Leave blank if same as customer"
                 />
               </div>
 
@@ -589,9 +610,8 @@ Please confirm this order to proceed. Thank you for choosing E-Run Calinan Deliv
                     value={address}
                     onChange={(e) => !isAddressReadOnly && setAddress(e.target.value)}
                     readOnly={isAddressReadOnly}
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-primary focus:border-transparent transition-all duration-200 ${
-                      isWithinArea === false ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                    } ${isAddressReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-primary focus:border-transparent transition-all duration-200 ${isWithinArea === false ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                      } ${isAddressReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                     placeholder="Enter your complete delivery address"
                     rows={3}
                     required
@@ -610,8 +630,8 @@ Please confirm this order to proceed. Thank you for choosing E-Run Calinan Deliv
                     )}
                   </div>
                 )}
-                
-                
+
+
                 {/* Map Display */}
                 {(customerLocation || address) && (
                   <div className="mt-4">
@@ -630,7 +650,7 @@ Please confirm this order to proceed. Thank you for choosing E-Run Calinan Deliv
                   </div>
                 )}
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-black mb-2">Landmark</label>
                 <input
@@ -657,11 +677,10 @@ Please confirm this order to proceed. Thank you for choosing E-Run Calinan Deliv
               <button
                 onClick={handleProceedToPayment}
                 disabled={!isDetailsValid}
-                className={`w-full py-4 rounded-xl font-medium text-lg transition-all duration-200 transform ${
-                  isDetailsValid
-                    ? 'bg-green-primary text-white hover:bg-green-dark hover:scale-[1.02] shadow-lg'
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                }`}
+                className={`w-full py-4 rounded-xl font-medium text-lg transition-all duration-200 transform ${isDetailsValid
+                  ? 'bg-green-primary text-white hover:bg-green-dark hover:scale-[1.02] shadow-lg'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
               >
                 Proceed to Payment
               </button>
@@ -689,19 +708,32 @@ Please confirm this order to proceed. Thank you for choosing E-Run Calinan Deliv
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Payment Method Selection */}
         <div className="bg-white rounded-xl shadow-sm p-6">
-          <h2 className="text-2xl font-noto font-medium text-black mb-6">Choose Payment Method</h2>
-          
+          <h2 className="text-2xl font-noto font-medium text-black mb-6">Payment Option</h2>
+
           <div className="grid grid-cols-1 gap-4 mb-6">
+            {/* Cash on Delivery */}
+            <button
+              type="button"
+              onClick={() => setPaymentMethod('cod')}
+              className={`p-4 rounded-lg border-2 transition-all duration-200 flex items-center space-x-3 ${paymentMethod === 'cod'
+                ? 'border-green-primary bg-green-primary text-white'
+                : 'border-gray-300 bg-white text-gray-700 hover:border-green-primary'
+                }`}
+            >
+              <span className="text-2xl">💵</span>
+              <span className="font-medium">Cash on Delivery</span>
+            </button>
+
+            {/* Cashless payments */}
             {paymentMethods.map((method) => (
               <button
                 key={method.id}
                 type="button"
                 onClick={() => setPaymentMethod(method.id as PaymentMethod)}
-                className={`p-4 rounded-lg border-2 transition-all duration-200 flex items-center space-x-3 ${
-                  paymentMethod === method.id
-                    ? 'border-green-primary bg-green-primary text-white'
-                    : 'border-gray-300 bg-white text-gray-700 hover:border-green-primary'
-                }`}
+                className={`p-4 rounded-lg border-2 transition-all duration-200 flex items-center space-x-3 ${paymentMethod === method.id
+                  ? 'border-green-primary bg-green-primary text-white'
+                  : 'border-gray-300 bg-white text-gray-700 hover:border-green-primary'
+                  }`}
               >
                 <span className="text-2xl">💳</span>
                 <span className="font-medium">{method.name}</span>
@@ -709,10 +741,18 @@ Please confirm this order to proceed. Thank you for choosing E-Run Calinan Deliv
             ))}
           </div>
 
-          {/* Payment Details with QR Code */}
-          {selectedPaymentMethod && (
+          {/* COD Notice */}
+          {paymentMethod === 'cod' && (
             <div className="bg-green-50 rounded-lg p-6 mb-6 border border-green-100">
-              <h3 className="font-medium text-black mb-4">Payment Details</h3>
+              <h3 className="font-medium text-black mb-2">💵 Cash on Delivery</h3>
+              <p className="text-sm text-gray-600">Please prepare the exact amount of <strong className="text-black">₱{grandTotal.toFixed(2)}</strong> upon delivery.</p>
+            </div>
+          )}
+
+          {/* Payment Details with QR Code (for cashless) */}
+          {paymentMethod !== 'cod' && selectedPaymentMethod && (
+            <div className="bg-green-50 rounded-lg p-6 mb-6 border border-green-100">
+              <h3 className="font-medium text-black mb-4">Cashless Payment Details</h3>
               <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div className="flex-1">
                   <p className="text-sm text-gray-600 mb-1">{selectedPaymentMethod.name}</p>
@@ -721,8 +761,8 @@ Please confirm this order to proceed. Thank you for choosing E-Run Calinan Deliv
                   <p className="text-xl font-semibold text-black">Amount: ₱{grandTotal.toFixed(2)}</p>
                 </div>
                 <div className="flex-shrink-0">
-                  <img 
-                    src={selectedPaymentMethod.qr_code_url} 
+                  <img
+                    src={selectedPaymentMethod.qr_code_url}
                     alt={`${selectedPaymentMethod.name} QR Code`}
                     className="w-32 h-32 rounded-lg border-2 border-green-300 shadow-sm"
                     onError={(e) => {
@@ -735,25 +775,27 @@ Please confirm this order to proceed. Thank you for choosing E-Run Calinan Deliv
             </div>
           )}
 
-          {/* Reference Number */}
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <h4 className="font-medium text-black mb-2">📸 Payment Proof Required</h4>
-            <p className="text-sm text-gray-700">
-              After making your payment, please take a screenshot of your payment receipt and attach it when you send your order via Messenger. This helps us verify and process your order quickly.
-            </p>
-          </div>
+          {/* Reference Number for cashless */}
+          {paymentMethod !== 'cod' && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <h4 className="font-medium text-black mb-2">📸 Payment Proof Required</h4>
+              <p className="text-sm text-gray-700">
+                After making your payment, please take a screenshot of your payment receipt and attach it when you send your order via Messenger. This helps us verify and process your order quickly.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Order Summary */}
         <div className="bg-white rounded-xl shadow-sm p-6">
           <h2 className="text-2xl font-noto font-medium text-black mb-6">Final Order Summary</h2>
-          
+
           <div className="space-y-6 mb-6">
             <div className="bg-green-50 rounded-lg p-4 border border-green-100">
               <h4 className="font-medium text-black mb-2">Customer Details</h4>
               <p className="text-sm text-gray-600">Name: {customerName}</p>
+              {receiverName && <p className="text-sm text-gray-600">Receiver: {receiverName}</p>}
               <p className="text-sm text-gray-600">Contact: {contactNumber}</p>
-              <p className="text-sm text-gray-600">Service: Delivery</p>
               <p className="text-sm text-gray-600">Address: {address}</p>
               {landmark && <p className="text-sm text-gray-600">Landmark: {landmark}</p>}
             </div>
@@ -773,8 +815,8 @@ Please confirm this order to proceed. Thank you for choosing E-Run Calinan Deliv
                         )}
                         {item.selectedAddOns && item.selectedAddOns.length > 0 && (
                           <p className="text-sm text-gray-600">
-                            Add-ons: {item.selectedAddOns.map(addOn => 
-                              addOn.quantity && addOn.quantity > 1 
+                            Add-ons: {item.selectedAddOns.map(addOn =>
+                              addOn.quantity && addOn.quantity > 1
                                 ? `${addOn.name} x${addOn.quantity}`
                                 : addOn.name
                             ).join(', ')}
@@ -789,7 +831,7 @@ Please confirm this order to proceed. Thank you for choosing E-Run Calinan Deliv
               </div>
             ))}
           </div>
-          
+
           <div className="border-t border-gray-200 pt-4 mb-6 space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span className="text-gray-600">Subtotal:</span>
@@ -805,15 +847,21 @@ Please confirm this order to proceed. Thank you for choosing E-Run Calinan Deliv
               </span>
               <span className="text-gray-900 font-semibold">₱{deliveryFee.toFixed(2)}</span>
             </div>
+            {convenienceFee > 0 && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">Convenience Fee:</span>
+                <span className="text-gray-900">₱{convenienceFee.toFixed(2)}</span>
+              </div>
+            )}
 
             {discountAmount > 0 && (
-                <div className="flex justify-between text-green-600 font-medium text-sm">
-                  <span>Discount</span>
-                  <span>-₱{discountAmount.toFixed(2)}</span>
-                </div>
+              <div className="flex justify-between text-green-600 font-medium text-sm">
+                <span>Discount</span>
+                <span>-₱{discountAmount.toFixed(2)}</span>
+              </div>
             )}
             <div className="flex items-center justify-between text-2xl font-noto font-semibold text-black pt-2 border-t border-gray-200">
-              <span>Total:</span>
+              <span>Total Bill:</span>
               <span>₱{grandTotal.toFixed(2)}</span>
             </div>
           </div>
@@ -824,7 +872,7 @@ Please confirm this order to proceed. Thank you for choosing E-Run Calinan Deliv
           >
             Place Order via Messenger
           </button>
-          
+
           <p className="text-xs text-gray-500 text-center mt-3">
             You'll be redirected to Facebook Messenger to confirm your order. Don't forget to attach your payment screenshot!
           </p>

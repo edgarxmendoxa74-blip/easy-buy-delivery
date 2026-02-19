@@ -133,7 +133,7 @@ const DeliveryMap: React.FC<DeliveryMapProps> = ({
     );
   }
 
-  const center = customerLocation 
+  const center = customerLocation
     ? [(restaurantLocation.lat + customerLocation.lat) / 2, (restaurantLocation.lng + customerLocation.lng) / 2]
     : [restaurantLocation.lat, restaurantLocation.lng];
 
@@ -153,14 +153,14 @@ const DeliveryMap: React.FC<DeliveryMapProps> = ({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
         />
-        
+
         <MapBounds restaurantLocation={restaurantLocation} customerLocation={customerLocation} fitBounds={fitBounds} />
 
         {/* Restaurant Marker */}
         <Marker position={[restaurantLocation.lat, restaurantLocation.lng]} icon={restaurantIcon}>
           <Popup>
             <div className="text-center">
-              <p className="font-semibold text-green-600">🛵 E-Run Calinan Delivery</p>
+              <p className="font-semibold text-green-600">🛵 Easy Buy Delivery</p>
               <p className="text-xs text-gray-600 mt-1">Calinan, Davao City</p>
             </div>
           </Popup>
@@ -169,10 +169,10 @@ const DeliveryMap: React.FC<DeliveryMapProps> = ({
         {/* Customer Marker */}
         {customerLocation && (
           <>
-            <Marker 
+            <Marker
               draggable={!!onLocationSelect}
               eventHandlers={eventHandlers}
-              position={[customerLocation.lat, customerLocation.lng]} 
+              position={[customerLocation.lat, customerLocation.lng]}
               icon={customerIcon}
               ref={markerRef}
             >

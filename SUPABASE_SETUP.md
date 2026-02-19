@@ -1,6 +1,6 @@
 # Complete Supabase Setup Guide
 
-This guide will help you set up your Supabase project from scratch for the E-Run Calinan Delivery application.
+This guide will help you set up your Supabase project from scratch for the Easy Buy Delivery application.
 
 ## Prerequisites
 
@@ -12,7 +12,7 @@ This guide will help you set up your Supabase project from scratch for the E-Run
 1. Go to [supabase.com](https://supabase.com) and sign in
 2. Click "New Project"
 3. Fill in:
-   - **Name**: E-Run Calinan Delivery (or your preferred name)
+   - **Name**: Easy Buy Delivery (or your preferred name)
    - **Database Password**: Choose a strong password (save it!)
    - **Region**: Choose closest to your users
    - **Pricing Plan**: Free tier is fine for development
@@ -193,7 +193,7 @@ Go to **Authentication** → **Policies** and verify:
 
 3. Test admin panel:
    - Go to `/admin`
-   - Password: `ERunCalinanDelivery@Admin!2025`
+   - Password: `Easy Buy Delivery@Admin!2025`
    - Try adding a restaurant
    - Try adding a menu item with image upload
 

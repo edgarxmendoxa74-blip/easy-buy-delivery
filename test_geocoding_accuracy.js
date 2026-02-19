@@ -6,7 +6,7 @@ async function testGeocode(query) {
     try {
         const response = await fetch(url, {
             headers: {
-                'User-Agent': 'E-Run-Delivery-Test-Script'
+                'User-Agent': 'Easy-Buy-Delivery-Test-Script'
             }
         });
         const data = await response.json();
@@ -25,11 +25,11 @@ async function testGeocode(query) {
 
 async function testGeocodeWithViewbox(query) {
     // Viewbox for Davao/Calinan area (approximate)
-    const viewbox = '125.30,7.30,125.70,7.00'; 
+    const viewbox = '125.30,7.30,125.70,7.00';
     const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&countrycodes=ph&viewbox=${viewbox}&bounded=1`;
     console.log(`Querying with viewbox: ${query}`);
     try {
-        const response = await fetch(url, { headers: { 'User-Agent': 'E-Run-Delivery-Test-Script' } });
+        const response = await fetch(url, { headers: { 'User-Agent': 'Easy-Buy-Delivery-Test-Script' } });
         const data = await response.json();
         console.log(`Results:`, data.length);
         if (data.length > 0) console.log('Top result:', data[0].display_name);

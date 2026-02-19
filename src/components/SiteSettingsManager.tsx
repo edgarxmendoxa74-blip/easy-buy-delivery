@@ -10,8 +10,13 @@ const SiteSettingsManager: React.FC = () => {
   const [formData, setFormData] = useState({
     site_name: '',
     site_description: '',
+    site_tagline: '',
+    address: '',
+    facebook_url: '',
+    facebook_handle: '',
     currency: '',
-    currency_code: ''
+    currency_code: '',
+    messenger_id: ''
   });
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string>('');
@@ -21,8 +26,13 @@ const SiteSettingsManager: React.FC = () => {
       setFormData({
         site_name: siteSettings.site_name,
         site_description: siteSettings.site_description,
+        site_tagline: siteSettings.site_tagline,
+        address: siteSettings.address,
+        facebook_url: siteSettings.facebook_url,
+        facebook_handle: siteSettings.facebook_handle,
         currency: siteSettings.currency,
-        currency_code: siteSettings.currency_code
+        currency_code: siteSettings.currency_code,
+        messenger_id: siteSettings.messenger_id
       });
       setLogoPreview(siteSettings.site_logo);
     }
@@ -51,10 +61,10 @@ const SiteSettingsManager: React.FC = () => {
   const handleSave = async () => {
     try {
       let logoUrl = logoPreview;
-      
+
       // Upload new logo if selected
       if (logoFile) {
-        const uploadedUrl = await uploadImage(logoFile, 'site-logo');
+        const uploadedUrl = await uploadImage(logoFile);
         logoUrl = uploadedUrl;
       }
 
@@ -62,15 +72,22 @@ const SiteSettingsManager: React.FC = () => {
       await updateSiteSettings({
         site_name: formData.site_name,
         site_description: formData.site_description,
+        site_tagline: formData.site_tagline,
+        address: formData.address,
+        facebook_url: formData.facebook_url,
+        facebook_handle: formData.facebook_handle,
         currency: formData.currency,
         currency_code: formData.currency_code,
+        messenger_id: formData.messenger_id,
         site_logo: logoUrl
       });
 
       setIsEditing(false);
       setLogoFile(null);
+      alert('Site settings saved successfully!');
     } catch (error) {
       console.error('Error saving site settings:', error);
+      alert('Failed to save site settings. Please check console for details.');
     }
   };
 
@@ -79,8 +96,13 @@ const SiteSettingsManager: React.FC = () => {
       setFormData({
         site_name: siteSettings.site_name,
         site_description: siteSettings.site_description,
+        site_tagline: siteSettings.site_tagline,
+        address: siteSettings.address,
+        facebook_url: siteSettings.facebook_url,
+        facebook_handle: siteSettings.facebook_handle,
         currency: siteSettings.currency,
-        currency_code: siteSettings.currency_code
+        currency_code: siteSettings.currency_code,
+        messenger_id: siteSettings.messenger_id
       });
       setLogoPreview(siteSettings.site_logo);
     }
@@ -213,6 +235,82 @@ const SiteSettingsManager: React.FC = () => {
           )}
         </div>
 
+        {/* Site Tagline */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Site Tagline
+          </label>
+          {isEditing ? (
+            <input
+              type="text"
+              name="site_tagline"
+              value={formData.site_tagline}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+              placeholder="Enter site tagline"
+            />
+          ) : (
+            <p className="text-gray-600">{siteSettings?.site_tagline || 'No tagline set'}</p>
+          )}
+        </div>
+
+        {/* Address */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Business Address
+          </label>
+          {isEditing ? (
+            <input
+              type="text"
+              name="address"
+              value={formData.address}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+              placeholder="Enter business address"
+            />
+          ) : (
+            <p className="text-gray-600">{siteSettings?.address || 'No address set'}</p>
+          )}
+        </div>
+
+        {/* Social Media Links */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Facebook URL
+            </label>
+            {isEditing ? (
+              <input
+                type="text"
+                name="facebook_url"
+                value={formData.facebook_url}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                placeholder="https://facebook.com/yourpage"
+              />
+            ) : (
+              <p className="text-gray-600 truncate">{siteSettings?.facebook_url || 'No URL set'}</p>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Facebook Handle
+            </label>
+            {isEditing ? (
+              <input
+                type="text"
+                name="facebook_handle"
+                value={formData.facebook_handle}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                placeholder="@yourpage"
+              />
+            ) : (
+              <p className="text-gray-600">{siteSettings?.facebook_handle || 'No handle set'}</p>
+            )}
+          </div>
+        </div>
+
         {/* Currency Settings */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -249,6 +347,28 @@ const SiteSettingsManager: React.FC = () => {
               <p className="text-lg font-medium text-black">{siteSettings?.currency_code}</p>
             )}
           </div>
+        </div>
+
+        {/* Messenger Settings */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Facebook Messenger ID (for orders and bookings)
+          </label>
+          {isEditing ? (
+            <input
+              type="text"
+              name="messenger_id"
+              value={formData.messenger_id}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+              placeholder="e.g., 61558704207383"
+            />
+          ) : (
+            <p className="text-gray-600">{siteSettings?.messenger_id || '61558704207383'}</p>
+          )}
+          <p className="text-xs text-gray-500 mt-1">
+            This ID is used to construct the link <code>https://m.me/ID</code> when users submit orders or bookings.
+          </p>
         </div>
       </div>
     </div>

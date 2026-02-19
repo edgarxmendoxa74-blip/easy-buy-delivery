@@ -4,32 +4,30 @@ export default {
   theme: {
     extend: {
       colors: {
+        brand: {
+          primary: '#16A34A', // Vibrant Green from logo
+          secondary: '#15803D', // Darker Green
+          light: '#F0FDF4', // Very light green background
+          accent: '#FACC15', // Yellow for "Buy" and "Easy" vibe
+          peach: '#FDBA74', // From mascot ears
+          charcoal: '#111827', // For text and scooter details
+        },
         green: {
-          primary: '#22C55E',
-          dark: '#16A34A',
+          primary: '#16A34A',
+          dark: '#15803D',
           light: '#4ADE80',
-          lighter: '#86EFAC',
-          darkest: '#15803D',
+          lighter: '#DCFCE7',
+          darkest: '#14532D',
         },
         offwhite: {
-          DEFAULT: '#FAFAF9',
-          light: '#FEFEFE',
-        },
-        ramen: {
-          red: '#22C55E',
-          dark: '#0B0A0A',
-          charcoal: '#111113',
-          cream: '#FAFAF9',
-          beige: '#F7F7F7',
-          gold: '#E0A106',
-          sesame: '#E5E5E5',
-          seaweed: '#1F2937',
-          kimchi: '#16A34A'
+          DEFAULT: '#FAFAFA',
+          light: '#FFFFFF',
         }
       },
       fontFamily: {
-        'pretendard': ['Pretendard', 'system-ui', 'sans-serif'],
-        'noto-kr': ['Noto Serif KR', 'serif']
+        'brand': ['Outfit', 'system-ui', 'sans-serif'],
+        'soft': ['Quicksand', 'sans-serif'],
+        'outfit': ['Outfit', 'sans-serif']
       },
       animation: {
         'fade-in': 'fadeIn 0.5s ease-in-out',

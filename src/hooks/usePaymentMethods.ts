@@ -21,7 +21,7 @@ export const usePaymentMethods = () => {
   const fetchPaymentMethods = async () => {
     try {
       setLoading(true);
-      
+
       const { data, error: fetchError } = await supabase
         .from('payment_methods')
         .select('*')
@@ -43,7 +43,7 @@ export const usePaymentMethods = () => {
   const fetchAllPaymentMethods = async () => {
     try {
       setLoading(true);
-      
+
       const { data, error: fetchError } = await supabase
         .from('payment_methods')
         .select('*')
@@ -110,7 +110,7 @@ export const usePaymentMethods = () => {
           details: insertError.details,
           hint: insertError.hint
         });
-        
+
         if (insertError.code === '23505') {
           throw new Error(`Payment method with ID "${method.id || 'this ID'}" already exists. Please use a different ID.`);
         } else if (insertError.code === '42501') {
@@ -139,16 +139,18 @@ export const usePaymentMethods = () => {
 
   const updatePaymentMethod = async (id: string, updates: Partial<PaymentMethod>) => {
     try {
+      // Build update object dynamically
+      const updateData: any = {};
+      if (updates.name !== undefined) updateData.name = updates.name;
+      if (updates.account_number !== undefined) updateData.account_number = updates.account_number;
+      if (updates.account_name !== undefined) updateData.account_name = updates.account_name;
+      if (updates.qr_code_url !== undefined) updateData.qr_code_url = updates.qr_code_url;
+      if (updates.active !== undefined) updateData.active = updates.active;
+      if (updates.sort_order !== undefined) updateData.sort_order = updates.sort_order;
+
       const { error: updateError } = await supabase
         .from('payment_methods')
-        .update({
-          name: updates.name,
-          account_number: updates.account_number,
-          account_name: updates.account_name,
-          qr_code_url: updates.qr_code_url,
-          active: updates.active,
-          sort_order: updates.sort_order
-        })
+        .update(updateData)
         .eq('id', id);
 
       if (updateError) throw updateError;

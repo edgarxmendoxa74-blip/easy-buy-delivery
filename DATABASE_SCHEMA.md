@@ -1,6 +1,6 @@
 # Database Schema Documentation
 
-This document describes the complete database structure for the E-Run Calinan Delivery application.
+This document describes the complete database structure for the Easy Buy Delivery application.
 
 ## Overview
 
