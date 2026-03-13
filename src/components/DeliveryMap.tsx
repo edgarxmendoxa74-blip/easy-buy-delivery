@@ -19,101 +19,145 @@ const DefaultIcon = L.icon({
 
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// Custom restaurant icon
-const restaurantIcon = L.divIcon({
-  className: 'custom-restaurant-marker',
-  html: `<div style="
-    background-color: #22c55e;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    border: 3px solid white;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 20px;
-  ">🛵</div>`,
-  iconSize: [40, 40],
-  iconAnchor: [20, 40],
-  popupAnchor: [0, -40]
-});
-
-// Custom customer icon
-const customerIcon = L.divIcon({
-  className: 'custom-customer-marker',
-  html: `<div style="
-    background-color: #3b82f6;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    border: 3px solid white;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 20px;
-  ">📍</div>`,
-  iconSize: [40, 40],
-  iconAnchor: [20, 40],
-  popupAnchor: [0, -40]
-});
 
 interface DeliveryMapProps {
-  restaurantLocation: { lat: number; lng: number };
-  customerLocation: { lat: number; lng: number } | null;
+  pickupLocation: { lat: number; lng: number };
+  dropoffLocation: { lat: number; lng: number } | null;
   distance?: number | null;
   address?: string;
-  onLocationSelect?: (lat: number, lng: number) => void;
+  onPickupSelect?: (lat: number, lng: number) => void;
+  onDropoffSelect?: (lat: number, lng: number) => void;
   routeCoordinates?: [number, number][] | null;
   fitBounds?: boolean;
+  pickupLabel?: string;
+  dropoffLabel?: string;
+  pickupIcon?: string;
+  dropoffIcon?: string;
+  pickupColor?: string;
+  dropoffColor?: string;
+  selectionMode?: 'pickup' | 'dropoff' | 'none';
 }
 
 // Component to fit map bounds to show both markers
-function MapBounds({ restaurantLocation, customerLocation, fitBounds = true }: { restaurantLocation: { lat: number; lng: number }; customerLocation: { lat: number; lng: number } | null; fitBounds?: boolean }) {
+function MapBounds({ pickupLocation, dropoffLocation, fitBounds = true }: { pickupLocation: { lat: number; lng: number }; dropoffLocation: { lat: number; lng: number } | null; fitBounds?: boolean }) {
   const map = useMap();
 
   useEffect(() => {
-    if (customerLocation && fitBounds) {
+    if (dropoffLocation && fitBounds) {
       const bounds = L.latLngBounds(
-        [restaurantLocation.lat, restaurantLocation.lng],
-        [customerLocation.lat, customerLocation.lng]
+        [pickupLocation.lat, pickupLocation.lng],
+        [dropoffLocation.lat, dropoffLocation.lng]
       );
       map.fitBounds(bounds, { padding: [50, 50] });
-    } else if (!customerLocation) {
-      map.setView([restaurantLocation.lat, restaurantLocation.lng], 13);
+    } else if (!dropoffLocation) {
+      map.setView([pickupLocation.lat, pickupLocation.lng], 13);
     }
-  }, [map, restaurantLocation, customerLocation, fitBounds]);
+  }, [map, pickupLocation, dropoffLocation, fitBounds]);
 
   return null;
 }
 
 const DeliveryMap: React.FC<DeliveryMapProps> = ({
-  restaurantLocation,
-  customerLocation,
+  pickupLocation,
+  dropoffLocation,
   distance,
   address,
-  onLocationSelect,
+  onPickupSelect,
+  onDropoffSelect,
   routeCoordinates,
-  fitBounds = true
+  fitBounds = true,
+  pickupLabel = 'Easy Buy Delivery',
+  dropoffLabel = 'Delivery Address',
+  pickupIcon = '🛵',
+  dropoffIcon = '📍',
+  pickupColor = '#22c55e',
+  dropoffColor = '#3b82f6',
+  selectionMode = 'none'
 }) => {
   const [mapReady, setMapReady] = useState(false);
-  const markerRef = useRef<L.Marker>(null);
+  const pickupMarkerRef = useRef<L.Marker>(null);
+  const dropoffMarkerRef = useRef<L.Marker>(null);
 
-  const eventHandlers = useMemo(
+  // Dynamic icons
+  const dynamicPickupIcon = L.divIcon({
+    className: 'custom-pickup-marker',
+    html: `<div style="
+      background-color: ${pickupColor};
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 3px solid white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 20px;
+    ">${pickupIcon}</div>`,
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -40]
+  });
+
+  const dynamicDropoffIcon = L.divIcon({
+    className: 'custom-dropoff-marker',
+    html: `<div style="
+      background-color: ${dropoffColor};
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 3px solid white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 20px;
+    ">${dropoffIcon}</div>`,
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -40]
+  });
+
+  const pickupEventHandlers = useMemo(
     () => ({
       dragend() {
-        const marker = markerRef.current;
-        if (marker && onLocationSelect) {
+        const marker = pickupMarkerRef.current;
+        if (marker && onPickupSelect) {
           const { lat, lng } = marker.getLatLng();
-          onLocationSelect(lat, lng);
+          onPickupSelect(lat, lng);
         }
       },
     }),
-    [onLocationSelect],
+    [onPickupSelect],
   );
+
+  const dropoffEventHandlers = useMemo(
+    () => ({
+      dragend() {
+        const marker = dropoffMarkerRef.current;
+        if (marker && onDropoffSelect) {
+          const { lat, lng } = marker.getLatLng();
+          onDropoffSelect(lat, lng);
+        }
+      },
+    }),
+    [onDropoffSelect],
+  );
+
+  // Component to handle map clicks
+  function MapEvents() {
+    useMapEvents({
+      click(e) {
+        if (selectionMode === 'pickup' && onPickupSelect) {
+          onPickupSelect(e.latlng.lat, e.latlng.lng);
+        } else if (selectionMode === 'dropoff' && onDropoffSelect) {
+          onDropoffSelect(e.latlng.lat, e.latlng.lng);
+        }
+      },
+    });
+    return null;
+  }
 
   useEffect(() => {
     // Only render map on client side
@@ -133,19 +177,19 @@ const DeliveryMap: React.FC<DeliveryMapProps> = ({
     );
   }
 
-  const center = customerLocation
-    ? [(restaurantLocation.lat + customerLocation.lat) / 2, (restaurantLocation.lng + customerLocation.lng) / 2]
-    : [restaurantLocation.lat, restaurantLocation.lng];
+  const center = dropoffLocation
+    ? [(pickupLocation.lat + dropoffLocation.lat) / 2, (pickupLocation.lng + dropoffLocation.lng) / 2]
+    : [pickupLocation.lat, pickupLocation.lng];
 
-  const path: [number, number][] = routeCoordinates || (customerLocation
-    ? [[restaurantLocation.lat, restaurantLocation.lng], [customerLocation.lat, customerLocation.lng]]
+  const path: [number, number][] = routeCoordinates || (dropoffLocation
+    ? [[pickupLocation.lat, pickupLocation.lng], [dropoffLocation.lat, dropoffLocation.lng]]
     : []);
 
   return (
     <div className="w-full h-64 rounded-lg overflow-hidden border-2 border-gray-300 shadow-lg">
       <MapContainer
         center={center as [number, number]}
-        zoom={customerLocation ? 12 : 13}
+        zoom={dropoffLocation ? 12 : 13}
         style={{ height: '100%', width: '100%' }}
         scrollWheelZoom={true}
       >
@@ -154,31 +198,39 @@ const DeliveryMap: React.FC<DeliveryMapProps> = ({
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
         />
 
-        <MapBounds restaurantLocation={restaurantLocation} customerLocation={customerLocation} fitBounds={fitBounds} />
+        <MapBounds pickupLocation={pickupLocation} dropoffLocation={dropoffLocation} fitBounds={fitBounds} />
+        <MapEvents />
 
-        {/* Restaurant Marker */}
-        <Marker position={[restaurantLocation.lat, restaurantLocation.lng]} icon={restaurantIcon}>
+        {/* Pickup Marker */}
+        <Marker 
+          position={[pickupLocation.lat, pickupLocation.lng]} 
+          icon={dynamicPickupIcon}
+          draggable={!!onPickupSelect}
+          eventHandlers={pickupEventHandlers}
+          ref={pickupMarkerRef}
+        >
           <Popup>
             <div className="text-center">
-              <p className="font-semibold text-green-600">🛵 Easy Buy Delivery</p>
-              <p className="text-xs text-gray-600 mt-1">Calinan, Davao City</p>
+              <p className="font-semibold text-green-600">{pickupLabel}</p>
+              {selectionMode === 'pickup' && <p className="text-xs text-blue-500 font-bold mt-1">SELECTING PICKUP...</p>}
             </div>
           </Popup>
         </Marker>
 
-        {/* Customer Marker */}
-        {customerLocation && (
+        {/* Dropoff Marker */}
+        {dropoffLocation && (
           <>
             <Marker
-              draggable={!!onLocationSelect}
-              eventHandlers={eventHandlers}
-              position={[customerLocation.lat, customerLocation.lng]}
-              icon={customerIcon}
-              ref={markerRef}
+              draggable={!!onDropoffSelect}
+              eventHandlers={dropoffEventHandlers}
+              position={[dropoffLocation.lat, dropoffLocation.lng]}
+              icon={dynamicDropoffIcon}
+              ref={dropoffMarkerRef}
             >
               <Popup>
                 <div className="text-center">
-                  <p className="font-semibold text-blue-600">📍 Delivery Address</p>
+                  <p className="font-semibold text-blue-600">{dropoffLabel}</p>
+                  {selectionMode === 'dropoff' && <p className="text-xs text-blue-500 font-bold mt-1">SELECTING DROP-OFF...</p>}
                   {address && <p className="text-xs text-gray-600 mt-1">{address}</p>}
                   {distance && (
                     <p className="text-xs font-semibold text-gray-800 mt-1">
@@ -189,10 +241,10 @@ const DeliveryMap: React.FC<DeliveryMapProps> = ({
               </Popup>
             </Marker>
 
-            {/* Route line connecting restaurant and customer */}
+            {/* Route line connecting pickup and dropoff */}
             <Polyline
               positions={path}
-              color="#16a34a" // green-600 to match brand
+              color={pickupColor}
               weight={5}
               opacity={0.8}
             />

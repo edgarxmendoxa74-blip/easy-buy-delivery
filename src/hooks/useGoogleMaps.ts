@@ -346,6 +346,29 @@ export const useGoogleMaps = () => {
     }
   }, [deliveryCenterCoords]);
 
+  // Get driving route from OSRM
+  const getRouteOSRM = async (start: { lat: number; lng: number }, end: { lat: number; lng: number }): Promise<[number, number][] | null> => {
+    try {
+      const response = await fetch(
+        `https://router.project-osrm.org/route/v1/driving/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson&alternatives=true&steps=true`
+      );
+      
+      if (!response.ok) return null;
+      
+      const data = await response.json();
+      if (data.routes && data.routes.length > 0) {
+        // Smart Routing: Select the fastest route
+        const bestRoute = data.routes.sort((a: any, b: any) => a.duration - b.duration)[0];
+        // OSRM returns [lng, lat], Leaflet needs [lat, lng]
+        return bestRoute.geometry.coordinates.map((coord: [number, number]) => [coord[1], coord[0]]);
+      }
+      return null;
+    } catch (err) {
+      console.error('OSRM routing error:', err);
+      return null;
+    }
+  };
+
   return {
     calculateDistance,
     calculateDistanceBetweenAddresses,
@@ -354,6 +377,8 @@ export const useGoogleMaps = () => {
     loading,
     error,
     restaurantLocation: RESTAURANT_LOCATION,
-    maxDeliveryRadius: MAX_DELIVERY_RADIUS_KM
+    maxDeliveryRadius: MAX_DELIVERY_RADIUS_KM,
+    geocodeAddressOSM,
+    getRouteOSRM
   };
 };

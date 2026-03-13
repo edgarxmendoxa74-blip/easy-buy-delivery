@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, MapPin, Plus, Trash2, Navigation } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useGoogleMaps } from '../hooks/useGoogleMaps';
 import { useSiteSettings } from '../hooks/useSiteSettings';
+import DeliveryMap from './DeliveryMap';
 
 
 interface PadalaBookingProps {
@@ -24,8 +25,8 @@ interface StoreOrder {
   items: OrderItem[];
 }
 
-const PadalaBooking: React.FC<PadalaBookingProps> = ({ onBack, title = 'Padala', mode = 'full' }) => {
-  const { calculateDistanceBetweenAddresses, calculateDeliveryFee } = useGoogleMaps();
+const PadalaBooking: React.FC<PadalaBookingProps> = ({ onBack, mode = 'full' }) => {
+  const { calculateDistanceBetweenAddresses, calculateDeliveryFee, geocodeAddressOSM, getRouteOSRM } = useGoogleMaps();
   const { siteSettings } = useSiteSettings();
 
   // Customer details
@@ -37,6 +38,13 @@ const PadalaBooking: React.FC<PadalaBookingProps> = ({ onBack, title = 'Padala',
     landmark: '',
     contact_number: '',
   });
+
+  // Location state for Pabili
+  const pickupCoords = { lat: 7.2906, lng: 125.3764 }; // Default to Calinan
+  const [dropoffCoords, setDropoffCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [routeCoordinates, setRouteCoordinates] = useState<[number, number][] | null>(null);
+  const [shouldFitBounds, setShouldFitBounds] = useState(true);
+  const [pabiliSelectionMode, setPabiliSelectionMode] = useState<'pickup' | 'dropoff'>('dropoff');
 
   // Store orders (for Pabili mode - multiple stores with items)
   const [storeOrders, setStoreOrders] = useState<StoreOrder[]>([
@@ -63,11 +71,16 @@ const PadalaBooking: React.FC<PadalaBookingProps> = ({ onBack, title = 'Padala',
     notes: ''
   });
 
+  // Location state for Padala
+  const [padalaPickupCoords, setPadalaPickupCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [padalaDropoffCoords, setPadalaDropoffCoords] = useState<{ lat: number; lng: number } | null>(null);
+
   const [distance, setDistance] = useState<number | null>(null);
   const [deliveryFee, setDeliveryFee] = useState<number>(65);
   const [isCalculating, setIsCalculating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [padalaSelectionMode, setPadalaSelectionMode] = useState<'pickup' | 'dropoff'>('pickup');
 
   // ═══════════ PADALA MODE HANDLERS ═══════════
   const handlePadalaInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -82,6 +95,13 @@ const PadalaBooking: React.FC<PadalaBookingProps> = ({ onBack, title = 'Padala',
 
     setIsCalculating(true);
     try {
+      // Geocode both addresses for the map
+      const pCoords = await geocodeAddressOSM(padalaData.pickup_address);
+      const dCoords = await geocodeAddressOSM(padalaData.delivery_address);
+
+      if (pCoords) setPadalaPickupCoords(pCoords);
+      if (dCoords) setPadalaDropoffCoords(dCoords);
+
       const result = await calculateDistanceBetweenAddresses(
         padalaData.pickup_address,
         padalaData.delivery_address
@@ -91,6 +111,11 @@ const PadalaBooking: React.FC<PadalaBookingProps> = ({ onBack, title = 'Padala',
         setDistance(result.distance);
         const fee = calculateDeliveryFee(result.distance);
         setDeliveryFee(fee);
+
+        if (pCoords && dCoords) {
+          const route = await getRouteOSRM(pCoords, dCoords);
+          setRouteCoordinates(route);
+        }
       } else {
         setDistance(null);
         setDeliveryFee(65);
@@ -101,6 +126,144 @@ const PadalaBooking: React.FC<PadalaBookingProps> = ({ onBack, title = 'Padala',
       setDeliveryFee(65);
     } finally {
       setIsCalculating(false);
+    }
+  };
+
+  // Auto-locate effect for Pabili Delivery Address
+  useEffect(() => {
+    if (mode !== 'simple' || !customerData.address.trim() || customerData.address.length < 5) return;
+
+    const timer = setTimeout(async () => {
+      const coords = await geocodeAddressOSM(customerData.address);
+      if (coords) {
+        setDropoffCoords(coords);
+        setCustomerData(prev => ({
+          ...prev,
+          pin_lat: coords.lat.toString(),
+          pin_lng: coords.lng.toString()
+        }));
+        setShouldFitBounds(true);
+      }
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [customerData.address, mode]);
+
+  // Auto-locate effect for Padala Pickup Address
+  useEffect(() => {
+    if (mode !== 'full' || !padalaData.pickup_address.trim() || padalaData.pickup_address.length < 5) return;
+
+    const timer = setTimeout(async () => {
+      const coords = await geocodeAddressOSM(padalaData.pickup_address);
+      if (coords) {
+        setPadalaPickupCoords(coords);
+        setShouldFitBounds(true);
+        
+        if (padalaDropoffCoords) {
+          const result = await calculateDistanceBetweenAddresses(
+            `${coords.lat},${coords.lng}`,
+            `${padalaDropoffCoords.lat},${padalaDropoffCoords.lng}`
+          );
+          if (result && !isNaN(result.distance)) {
+            setDistance(result.distance);
+            setDeliveryFee(calculateDeliveryFee(result.distance));
+            const route = await getRouteOSRM(coords, padalaDropoffCoords);
+            setRouteCoordinates(route);
+          }
+        }
+      }
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [padalaData.pickup_address, mode]);
+
+  // Auto-locate effect for Padala Delivery Address
+  useEffect(() => {
+    if (mode !== 'full' || !padalaData.delivery_address.trim() || padalaData.delivery_address.length < 5) return;
+
+    const timer = setTimeout(async () => {
+      const coords = await geocodeAddressOSM(padalaData.delivery_address);
+      if (coords) {
+        setPadalaDropoffCoords(coords);
+        setShouldFitBounds(true);
+
+        if (padalaPickupCoords) {
+          const result = await calculateDistanceBetweenAddresses(
+            `${padalaPickupCoords.lat},${padalaPickupCoords.lng}`,
+            `${coords.lat},${coords.lng}`
+          );
+          if (result && !isNaN(result.distance)) {
+            setDistance(result.distance);
+            setDeliveryFee(calculateDeliveryFee(result.distance));
+            const route = await getRouteOSRM(padalaPickupCoords, coords);
+            setRouteCoordinates(route);
+          }
+        }
+      }
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [padalaData.delivery_address, mode]);
+
+  const handlePadalaPickupSelect = async (lat: number, lng: number) => {
+    setPadalaPickupCoords({ lat, lng });
+    setShouldFitBounds(false);
+    
+    // Reverse geocode
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`
+      );
+      const data = await response.json();
+      if (data && data.display_name) {
+        setPadalaData(prev => ({ ...prev, pickup_address: data.display_name }));
+      }
+    } catch (err) {
+      console.error('Reverse geocoding error:', err);
+    }
+
+    if (padalaDropoffCoords) {
+      const result = await calculateDistanceBetweenAddresses(
+        `${lat},${lng}`,
+        `${padalaDropoffCoords.lat},${padalaDropoffCoords.lng}`
+      );
+      if (result && !isNaN(result.distance)) {
+        setDistance(result.distance);
+        setDeliveryFee(calculateDeliveryFee(result.distance));
+        const route = await getRouteOSRM({ lat, lng }, padalaDropoffCoords);
+        setRouteCoordinates(route);
+      }
+    }
+  };
+
+  const handlePadalaDropoffSelect = async (lat: number, lng: number) => {
+    setPadalaDropoffCoords({ lat, lng });
+    setShouldFitBounds(false);
+    
+    // Reverse geocode
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`
+      );
+      const data = await response.json();
+      if (data && data.display_name) {
+        setPadalaData(prev => ({ ...prev, delivery_address: data.display_name }));
+      }
+    } catch (err) {
+      console.error('Reverse geocoding error:', err);
+    }
+
+    if (padalaPickupCoords) {
+      const result = await calculateDistanceBetweenAddresses(
+        `${padalaPickupCoords.lat},${padalaPickupCoords.lng}`,
+        `${lat},${lng}`
+      );
+      if (result && !isNaN(result.distance)) {
+        setDistance(result.distance);
+        setDeliveryFee(calculateDeliveryFee(result.distance));
+        const route = await getRouteOSRM(padalaPickupCoords, { lat, lng });
+        setRouteCoordinates(route);
+      }
     }
   };
 
@@ -159,16 +322,26 @@ const PadalaBooking: React.FC<PadalaBookingProps> = ({ onBack, title = 'Padala',
   };
 
   // Get current GPS location
-  const getCurrentLocation = () => {
+  const getCurrentLocation = (target: 'pabili_dropoff' | 'padala_pickup' | 'padala_dropoff') => {
     setIsGettingLocation(true);
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
-        setCustomerData(prev => ({
-          ...prev,
-          pin_lat: latitude.toString(),
-          pin_lng: longitude.toString()
-        }));
+        
+        if (target === 'pabili_dropoff') {
+          setCustomerData(prev => ({
+            ...prev,
+            pin_lat: latitude.toString(),
+            pin_lng: longitude.toString()
+          }));
+          setDropoffCoords({ lat: latitude, lng: longitude });
+        } else if (target === 'padala_pickup') {
+          await handlePadalaPickupSelect(latitude, longitude);
+        } else if (target === 'padala_dropoff') {
+          await handlePadalaDropoffSelect(latitude, longitude);
+        }
+
+        setShouldFitBounds(true);
 
         // Reverse geocode to get address
         try {
@@ -177,7 +350,13 @@ const PadalaBooking: React.FC<PadalaBookingProps> = ({ onBack, title = 'Padala',
           );
           const data = await response.json();
           if (data && data.display_name) {
-            setCustomerData(prev => ({ ...prev, address: data.display_name }));
+            if (target === 'pabili_dropoff') {
+              setCustomerData(prev => ({ ...prev, address: data.display_name }));
+            } else if (target === 'padala_pickup') {
+              setPadalaData(prev => ({ ...prev, pickup_address: data.display_name }));
+            } else if (target === 'padala_dropoff') {
+              setPadalaData(prev => ({ ...prev, delivery_address: data.display_name }));
+            }
           }
         } catch (err) {
           console.error('Reverse geocoding error:', err);
@@ -190,6 +369,46 @@ const PadalaBooking: React.FC<PadalaBookingProps> = ({ onBack, title = 'Padala',
         setIsGettingLocation(false);
       }
     );
+  };
+
+  const handlePabiliLocationSelect = async (lat: number, lng: number) => {
+    if (pabiliSelectionMode === 'pickup') {
+      // Store/Pickup
+      // In Pabili mode, pickup is often the store. But here we allow selecting it.
+      // Logic for multi-store pabili might need update if store_address is synced.
+      // For now, let's assume it updates the FIRST store's address as a shortcut.
+      if (storeOrders.length > 0) {
+         setStoreOrders(prev => {
+            const updated = [...prev];
+            updated[0] = { ...updated[0], store_address: 'Point on Map' }; // Placeholder or reverse geocode
+            return updated;
+         });
+      }
+
+      // We might need a separate pickupCoords state if it's not the default Calinan center
+      // But for Pabili, usually it's from Calinan Center.
+    } else {
+      setDropoffCoords({ lat, lng });
+      setShouldFitBounds(false);
+      setCustomerData(prev => ({
+        ...prev,
+        pin_lat: lat.toString(),
+        pin_lng: lng.toString()
+      }));
+
+      // Reverse geocode
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`
+        );
+        const data = await response.json();
+        if (data && data.display_name) {
+          setCustomerData(prev => ({ ...prev, address: data.display_name }));
+        }
+      } catch (err) {
+        console.error('Reverse geocoding error:', err);
+      }
+    }
   };
 
   // ═══════════ SUBMIT HANDLER ═══════════
@@ -524,7 +743,7 @@ Please confirm this Padala booking. Thank you! 🛵`;
               <label className="block text-sm font-medium text-gray-700 mb-2">Delivery Address *</label>
               <button
                 type="button"
-                onClick={getCurrentLocation}
+                onClick={() => getCurrentLocation('pabili_dropoff')}
                 disabled={isGettingLocation}
                 className="w-full mb-2 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-2 font-medium"
               >
@@ -569,6 +788,37 @@ Please confirm this Padala booking. Thank you! 🛵`;
                   placeholder="Auto-filled from GPS"
                 />
               </div>
+            </div>
+
+            {/* Pabili Map */}
+            <div className="mt-4">
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-700">Delivery Location Map</label>
+                <div className="flex rounded-lg overflow-hidden border border-gray-200">
+                  <button
+                    type="button"
+                    onClick={() => setPabiliSelectionMode('dropoff')}
+                    className={`px-3 py-1 text-xs font-bold ${pabiliSelectionMode === 'dropoff' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'}`}
+                  >
+                    Select Delivery
+                  </button>
+                </div>
+              </div>
+              <DeliveryMap
+                pickupLocation={pickupCoords}
+                dropoffLocation={dropoffCoords}
+                distance={distance}
+                address={customerData.address}
+                onDropoffSelect={handlePabiliLocationSelect}
+                routeCoordinates={routeCoordinates}
+                fitBounds={shouldFitBounds}
+                pickupLabel="Calinan Center"
+                dropoffLabel="Your Location"
+                selectionMode={pabiliSelectionMode}
+              />
+              <p className="text-xs text-gray-500 mt-2 text-center flex items-center justify-center gap-1">
+                <span>💡</span> Tip: Tap the map or drag the pin to set your location.
+              </p>
             </div>
 
             <div>
@@ -655,6 +905,15 @@ Please confirm this Padala booking. Thank you! 🛵`;
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Pickup Address *</label>
+              <button
+                type="button"
+                onClick={() => getCurrentLocation('padala_pickup')}
+                disabled={isGettingLocation}
+                className="w-full mb-2 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-2 font-medium"
+              >
+                <Navigation className={`h-5 w-5 ${isGettingLocation ? 'animate-spin' : ''}`} />
+                {isGettingLocation ? 'Getting Location...' : 'Use My Current Location'}
+              </button>
               <textarea
                 name="pickup_address"
                 value={padalaData.pickup_address}
@@ -667,6 +926,15 @@ Please confirm this Padala booking. Thank you! 🛵`;
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Delivery Address *</label>
+              <button
+                type="button"
+                onClick={() => getCurrentLocation('padala_dropoff')}
+                disabled={isGettingLocation}
+                className="w-full mb-2 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-2 font-medium"
+              >
+                <Navigation className={`h-5 w-5 ${isGettingLocation ? 'animate-spin' : ''}`} />
+                {isGettingLocation ? 'Getting Location...' : 'Use My Current Location'}
+              </button>
               <textarea
                 name="delivery_address"
                 value={padalaData.delivery_address}
@@ -681,6 +949,51 @@ Please confirm this Padala booking. Thank you! 🛵`;
                 <p className="text-xs text-gray-500 mt-1">Calculating distance...</p>
               )}
             </div>
+          </div>
+
+          {/* Padala Map */}
+          <div className="bg-white rounded-xl shadow-sm p-6 md:p-8 space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                🗺️ Delivery Map
+              </h2>
+              <div className="flex rounded-xl overflow-hidden border border-gray-200 shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => setPadalaSelectionMode('pickup')}
+                  className={`px-4 py-2 text-sm font-bold transition-all ${padalaSelectionMode === 'pickup' ? 'bg-purple-600 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+                >
+                  Pick Pickup
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPadalaSelectionMode('dropoff')}
+                  className={`px-4 py-2 text-sm font-bold transition-all ${padalaSelectionMode === 'dropoff' ? 'bg-blue-600 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+                >
+                  Pick Drop-off
+                </button>
+              </div>
+            </div>
+            <DeliveryMap
+              pickupLocation={padalaPickupCoords || { lat: 7.2906, lng: 125.3764 }}
+              dropoffLocation={padalaDropoffCoords}
+              distance={distance}
+              address={padalaData.delivery_address}
+              onPickupSelect={handlePadalaPickupSelect}
+              onDropoffSelect={handlePadalaDropoffSelect}
+              routeCoordinates={routeCoordinates}
+              fitBounds={shouldFitBounds}
+              pickupLabel="Pickup Point"
+              dropoffLabel="Delivery Point"
+              pickupIcon="📦"
+              dropoffIcon="📍"
+              pickupColor="#9333ea" // purple-600
+              dropoffColor="#3b82f6" // blue-500
+              selectionMode={padalaSelectionMode}
+            />
+            <p className="text-xs text-gray-500 mt-2 text-center flex items-center justify-center gap-1">
+              <span>💡</span> Tip: Select a mode above, then tap map or drag pins to set locations.
+            </p>
           </div>
         </div>
 

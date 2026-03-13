@@ -27,7 +27,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
   const [landmark, setLandmark] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cod');
   const [notes, setNotes] = useState('');
-  const [convenienceFee, setConvenienceFee] = useState<number>(0);
+  const [convenienceFee] = useState<number>(0);
   // Delivery fee calculation
   const [distance, setDistance] = useState<number | null>(null);
   const [deliveryFee, setDeliveryFee] = useState<number>(65); // Default base fee
@@ -636,11 +636,11 @@ Please confirm this order to proceed. Thank you for choosing Easy Buy Delivery! 
                 {(customerLocation || address) && (
                   <div className="mt-4">
                     <DeliveryMap
-                      restaurantLocation={restaurantLocation}
-                      customerLocation={customerLocation}
+                      pickupLocation={restaurantLocation}
+                      dropoffLocation={customerLocation}
                       distance={distance}
                       address={address}
-                      onLocationSelect={handleLocationSelect}
+                      onDropoffSelect={handleLocationSelect}
                       routeCoordinates={routeCoordinates}
                       fitBounds={shouldFitBounds}
                     />

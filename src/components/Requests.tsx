@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Send } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, Send, Navigation } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useGoogleMaps } from '../hooks/useGoogleMaps';
 import { useSiteSettings } from '../hooks/useSiteSettings';
+import DeliveryMap from './DeliveryMap';
 
 
 interface RequestsProps {
@@ -10,7 +11,7 @@ interface RequestsProps {
 }
 
 const Requests: React.FC<RequestsProps> = ({ onBack }) => {
-  const { calculateDistanceBetweenAddresses, calculateDeliveryFee } = useGoogleMaps();
+  const { calculateDistanceBetweenAddresses, calculateDeliveryFee, geocodeAddressOSM, getRouteOSRM } = useGoogleMaps();
   const { siteSettings } = useSiteSettings();
 
   // Angkas/Padala form data
@@ -27,10 +28,76 @@ const Requests: React.FC<RequestsProps> = ({ onBack }) => {
   const [distance, setDistance] = useState<number | null>(null);
   const [deliveryFee, setDeliveryFee] = useState<number>(60);
   const [isCalculating, setIsCalculating] = useState(false);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
+
+  // Map state
+  const [pickupCoords, setPickupCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [dropoffCoords, setDropoffCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [routeCoordinates, setRouteCoordinates] = useState<[number, number][] | null>(null);
+  const [shouldFitBounds, setShouldFitBounds] = useState(true);
+  const [selectionMode, setSelectionMode] = useState<'pickup' | 'dropoff'>('pickup');
 
   const requestTypes = [
     { value: 'angkas', label: 'Angkas (Motorcycle Ride)' }
   ];
+
+  // Auto-locate effect for Pickup Address
+  useEffect(() => {
+    if (!angkasData.pickup_address.trim() || angkasData.pickup_address.length < 5) return;
+
+    const timer = setTimeout(async () => {
+      const coords = await geocodeAddressOSM(angkasData.pickup_address);
+      if (coords) {
+        setPickupCoords(coords);
+        setShouldFitBounds(true);
+        
+        // If we have both, update route
+        if (dropoffCoords) {
+          const result = await calculateDistanceBetweenAddresses(
+            `${coords.lat},${coords.lng}`,
+            `${dropoffCoords.lat},${dropoffCoords.lng}`
+          );
+          if (result && !isNaN(result.distance)) {
+            setDistance(result.distance);
+            setDeliveryFee(calculateDeliveryFee(result.distance));
+            const route = await getRouteOSRM(coords, dropoffCoords);
+            setRouteCoordinates(route);
+          }
+        }
+      }
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [angkasData.pickup_address]);
+
+  // Auto-locate effect for Drop-off Address
+  useEffect(() => {
+    if (!angkasData.dropoff_address.trim() || angkasData.dropoff_address.length < 5) return;
+
+    const timer = setTimeout(async () => {
+      const coords = await geocodeAddressOSM(angkasData.dropoff_address);
+      if (coords) {
+        setDropoffCoords(coords);
+        setShouldFitBounds(true);
+
+        // If we have both, update route
+        if (pickupCoords) {
+          const result = await calculateDistanceBetweenAddresses(
+            `${pickupCoords.lat},${pickupCoords.lng}`,
+            `${coords.lat},${coords.lng}`
+          );
+          if (result && !isNaN(result.distance)) {
+            setDistance(result.distance);
+            setDeliveryFee(calculateDeliveryFee(result.distance));
+            const route = await getRouteOSRM(pickupCoords, coords);
+            setRouteCoordinates(route);
+          }
+        }
+      }
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [angkasData.dropoff_address]);
 
   // Angkas/Padala handlers
   const handleAngkasInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -45,6 +112,14 @@ const Requests: React.FC<RequestsProps> = ({ onBack }) => {
 
     try {
       setIsCalculating(true);
+      
+      // Geocode both addresses for the map
+      const pCoords = await geocodeAddressOSM(angkasData.pickup_address);
+      const dCoords = await geocodeAddressOSM(angkasData.dropoff_address);
+
+      if (pCoords) setPickupCoords(pCoords);
+      if (dCoords) setDropoffCoords(dCoords);
+
       const result = await calculateDistanceBetweenAddresses(
         angkasData.pickup_address,
         angkasData.dropoff_address
@@ -53,6 +128,11 @@ const Requests: React.FC<RequestsProps> = ({ onBack }) => {
         setDistance(result.distance);
         const fee = calculateDeliveryFee(result.distance);
         setDeliveryFee(fee);
+
+        if (pCoords && dCoords) {
+          const route = await getRouteOSRM(pCoords, dCoords);
+          setRouteCoordinates(route);
+        }
       } else {
         setDistance(null);
         setDeliveryFee(60);
@@ -64,6 +144,91 @@ const Requests: React.FC<RequestsProps> = ({ onBack }) => {
     } finally {
       setIsCalculating(false);
     }
+  };
+
+  const handleMapPickupSelect = async (lat: number, lng: number) => {
+    setPickupCoords({ lat, lng });
+    setShouldFitBounds(false);
+    
+    // Reverse geocode
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`
+      );
+      const data = await response.json();
+      if (data && data.display_name) {
+        setAngkasData(prev => ({ ...prev, pickup_address: data.display_name }));
+      }
+    } catch (err) {
+      console.error('Reverse geocoding error:', err);
+    }
+
+    if (dropoffCoords) {
+      const result = await calculateDistanceBetweenAddresses(
+        `${lat},${lng}`,
+        `${dropoffCoords.lat},${dropoffCoords.lng}`
+      );
+      if (result && !isNaN(result.distance)) {
+        setDistance(result.distance);
+        setDeliveryFee(calculateDeliveryFee(result.distance));
+        const route = await getRouteOSRM({ lat, lng }, dropoffCoords);
+        setRouteCoordinates(route);
+      }
+    }
+  };
+
+  const handleMapDropoffSelect = async (lat: number, lng: number) => {
+    setDropoffCoords({ lat, lng });
+    setShouldFitBounds(false);
+    
+    // Reverse geocode
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`
+      );
+      const data = await response.json();
+      if (data && data.display_name) {
+        setAngkasData(prev => ({ ...prev, dropoff_address: data.display_name }));
+      }
+    } catch (err) {
+      console.error('Reverse geocoding error:', err);
+    }
+
+    if (pickupCoords) {
+      const result = await calculateDistanceBetweenAddresses(
+        `${pickupCoords.lat},${pickupCoords.lng}`,
+        `${lat},${lng}`
+      );
+      if (result && !isNaN(result.distance)) {
+        setDistance(result.distance);
+        setDeliveryFee(calculateDeliveryFee(result.distance));
+        const route = await getRouteOSRM(pickupCoords, { lat, lng });
+        setRouteCoordinates(route);
+      }
+    }
+  };
+
+  const getCurrentLocation = (target: 'pickup' | 'dropoff') => {
+    setIsGettingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        
+        if (target === 'pickup') {
+          await handleMapPickupSelect(latitude, longitude);
+        } else {
+          await handleMapDropoffSelect(latitude, longitude);
+        }
+        
+        setShouldFitBounds(true);
+        setIsGettingLocation(false);
+      },
+      (error) => {
+        console.error('Geolocation error:', error);
+        alert('Could not get your location. Please enter your address manually.');
+        setIsGettingLocation(false);
+      }
+    );
   };
 
   const handleAngkasSubmit = async (e: React.FormEvent) => {
@@ -234,6 +399,15 @@ Thank you for your Angkas/Padala request. We will get back to you soon! 🛵`;
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Pickup Address *</label>
+          <button
+            type="button"
+            onClick={() => getCurrentLocation('pickup')}
+            disabled={isGettingLocation}
+            className="w-full mb-2 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-2 font-medium"
+          >
+            <Navigation className={`h-5 w-5 ${isGettingLocation ? 'animate-spin' : ''}`} />
+            {isGettingLocation ? 'Getting Location...' : 'Use My Current Location'}
+          </button>
           <textarea
             name="pickup_address"
             value={angkasData.pickup_address}
@@ -247,6 +421,15 @@ Thank you for your Angkas/Padala request. We will get back to you soon! 🛵`;
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Drop-off Address *</label>
+          <button
+            type="button"
+            onClick={() => getCurrentLocation('dropoff')}
+            disabled={isGettingLocation}
+            className="w-full mb-2 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-2 font-medium"
+          >
+            <Navigation className={`h-5 w-5 ${isGettingLocation ? 'animate-spin' : ''}`} />
+            {isGettingLocation ? 'Getting Location...' : 'Use My Current Location'}
+          </button>
           <textarea
             name="dropoff_address"
             value={angkasData.dropoff_address}
@@ -262,9 +445,54 @@ Thank you for your Angkas/Padala request. We will get back to you soon! 🛵`;
           )}
           {!isCalculating && distance !== null && (
             <p className="text-xs text-green-600 mt-1">
-              Estimated distance: {distance} km • Estimated fee: ₱{deliveryFee.toFixed(2)} (₱60 base + ₱15 every 3km)
+              Estimated distance: {distance} km • Estimated fee: ₱{deliveryFee.toFixed(2)}
             </p>
           )}
+        </div>
+
+        {/* Map Section */}
+        <div className="space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+              🗺️ Pick Point on Map
+            </h2>
+            <div className="flex rounded-xl overflow-hidden border border-gray-200 shadow-sm">
+              <button
+                type="button"
+                onClick={() => setSelectionMode('pickup')}
+                className={`px-4 py-2 text-sm font-bold transition-all ${selectionMode === 'pickup' ? 'bg-green-600 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+              >
+                Set Pickup
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectionMode('dropoff')}
+                className={`px-4 py-2 text-sm font-bold transition-all ${selectionMode === 'dropoff' ? 'bg-blue-600 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+              >
+                Set Drop-off
+              </button>
+            </div>
+          </div>
+          <DeliveryMap
+            pickupLocation={pickupCoords || { lat: 7.2906, lng: 125.3764 }}
+            dropoffLocation={dropoffCoords}
+            distance={distance}
+            address={angkasData.dropoff_address}
+            onPickupSelect={handleMapPickupSelect}
+            onDropoffSelect={handleMapDropoffSelect}
+            routeCoordinates={routeCoordinates}
+            fitBounds={shouldFitBounds}
+            pickupLabel="Pickup Point"
+            dropoffLabel="Destination Point"
+            pickupIcon="🛵"
+            dropoffIcon="📍"
+            pickupColor="#22c55e" // green-500
+            dropoffColor="#3b82f6" // blue-500
+            selectionMode={selectionMode}
+          />
+          <p className="text-xs text-gray-500 mt-2 text-center flex items-center justify-center gap-1">
+            <span>💡</span> Tip: Select "Set Pickup" or "Set Drop-off" then tap the map to place pins.
+          </p>
         </div>
 
         <button
