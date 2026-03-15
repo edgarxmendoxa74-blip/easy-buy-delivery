@@ -485,7 +485,7 @@ ${store.items.map(i => `  • ${i.item_description} — Qty: ${i.quantity}`).joi
 ━━━━━━━━━━━━━━━━━━
 📋 Receiver: ${customerData.receivers_name}
 📞 Contact: ${customerData.contact_number}
-📍 Address: ${customerData.address}${customerData.pin_lat && customerData.pin_lng ? `\n📌 Pin: ${customerData.pin_lat}, ${customerData.pin_lng}` : ''}${customerData.landmark ? `\n🗺️ Landmark: ${customerData.landmark}` : ''}
+📍 Address: ${customerData.address}${customerData.pin_lat && customerData.pin_lng ? `\n📌 Pin Location: https://maps.google.com/?q=${customerData.pin_lat},${customerData.pin_lng}` : ''}${customerData.landmark ? `\n🗺️ Landmark: ${customerData.landmark}` : ''}
 
 Please confirm this Pabili order. Thank you! 🛵`;
 
@@ -539,10 +539,10 @@ Please confirm this Pabili order. Thank you! 🛵`;
 📞 Contact: ${padalaData.contact_number}
 
 📍 Pickup Address:
-${padalaData.pickup_address}
+${padalaData.pickup_address}${padalaPickupCoords ? `\n📌 Pickup Pin: https://maps.google.com/?q=${padalaPickupCoords.lat},${padalaPickupCoords.lng}` : ''}
 
 📍 Delivery Address:
-${padalaData.delivery_address}
+${padalaData.delivery_address}${padalaDropoffCoords ? `\n📌 Delivery Pin: https://maps.google.com/?q=${padalaDropoffCoords.lat},${padalaDropoffCoords.lng}` : ''}
 
 ${padalaData.item_description ? `📦 Item Details:\n${padalaData.item_description}\n` : ''}${padalaData.item_weight ? `Weight: ${padalaData.item_weight}\n` : ''}${padalaData.item_value ? `Declared Value: ₱${padalaData.item_value}\n` : ''}
 📅 Preferred Date: ${padalaData.preferred_date || 'Any'}

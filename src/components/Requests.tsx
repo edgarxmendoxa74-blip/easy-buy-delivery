@@ -271,10 +271,10 @@ Subject: ${angkasData.subject}
 👤 Customer: ${angkasData.customer_name}
 📞 Contact: ${angkasData.contact_number}
 📍 Pickup Address:
-${angkasData.pickup_address}
+${angkasData.pickup_address}${pickupCoords ? `\n📌 Pickup Pin: https://maps.google.com/?q=${pickupCoords.lat},${pickupCoords.lng}` : ''}
 
 📍 Drop-off Address:
-${angkasData.dropoff_address}
+${angkasData.dropoff_address}${dropoffCoords ? `\n📌 Drop-off Pin: https://maps.google.com/?q=${dropoffCoords.lat},${dropoffCoords.lng}` : ''}
 
 ${distance !== null ? `📏 Distance: ${distance} km` : ''}
 💰 Estimated Fare (delivery fee logic): ₱${deliveryFee.toFixed(2)}

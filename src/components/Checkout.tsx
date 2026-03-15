@@ -363,7 +363,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
 👤 Customer: ${customerName}
 📞 Contact: ${contactNumber}${receiverName ? `\n📋 Receiver: ${receiverName}` : ''}
 📍 Service: Delivery
-🏠 Address: ${address}${landmark ? `\n🗺️ Landmark: ${landmark}` : ''}
+🏠 Address: ${address}${landmark ? `\n🗺️ Landmark: ${landmark}` : ''}${customerLocation ? `\n📌 Pin Location: https://maps.google.com/?q=${customerLocation.lat},${customerLocation.lng}` : ''}
 
 
 📋 ORDER DETAILS:
