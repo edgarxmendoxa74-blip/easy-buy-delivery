@@ -288,7 +288,7 @@ Thank you for your Angkas/Padala request. We will get back to you soon! 🛵`;
       const messengerId = siteSettings?.messenger_id || '61558704207383';
       const messengerUrl = `https://m.me/${messengerId}?text=${encodedMessage}`;
 
-      window.open(messengerUrl, '_blank');
+      window.location.href = messengerUrl;
 
       // Reset form
       setAngkasData({

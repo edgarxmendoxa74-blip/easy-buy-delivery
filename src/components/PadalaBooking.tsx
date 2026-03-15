@@ -492,7 +492,7 @@ Please confirm this Pabili order. Thank you! 🛵`;
         const encodedMessage = encodeURIComponent(message);
         const messengerId = siteSettings?.messenger_id || '61558704207383';
         const messengerUrl = `https://m.me/${messengerId}?text=${encodedMessage}`;
-        window.open(messengerUrl, '_blank');
+        window.location.href = messengerUrl;
 
         // Reset form
         setStoreOrders([{
@@ -558,7 +558,7 @@ Please confirm this Padala booking. Thank you! 🛵`;
         const encodedMessage = encodeURIComponent(message);
         const messengerId = siteSettings?.messenger_id || '61558704207383';
         const messengerUrl = `https://m.me/${messengerId}?text=${encodedMessage}`;
-        window.open(messengerUrl, '_blank');
+        window.location.href = messengerUrl;
 
         // Reset form
         setPadalaData({

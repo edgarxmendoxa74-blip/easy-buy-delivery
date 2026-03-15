@@ -404,7 +404,7 @@ Please confirm this order to proceed. Thank you for choosing Easy Buy Delivery! 
     const messengerId = siteSettings?.messenger_id || '61558704207383';
     const messengerUrl = `https://m.me/${messengerId}?text=${encodedMessage}`;
 
-    window.open(messengerUrl, '_blank');
+    window.location.href = messengerUrl;
   };
 
   const isDetailsValid = customerName && contactNumber && address;
