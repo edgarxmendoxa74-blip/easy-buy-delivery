@@ -6,10 +6,13 @@ export const useCart = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
 
   const calculateItemPrice = (item: MenuItem, variation?: Variation, addOns?: AddOn[]) => {
-    // If variation is selected, use ONLY the variation price (it replaces the base price)
-    let price = variation 
-      ? variation.price
-      : (item.effectivePrice || item.basePrice);
+    // Base price is always included
+    let price = item.effectivePrice || item.basePrice;
+    
+    // Add variation price on top of base price
+    if (variation) {
+      price += variation.price;
+    }
     
     // Add add-ons prices
     if (addOns) {

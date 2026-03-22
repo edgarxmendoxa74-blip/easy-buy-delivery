@@ -1,17 +1,17 @@
 import { useState, useCallback, useEffect } from 'react';
 
-// Restaurant location: Calinan, Davao City
+// Restaurant location: Floridablanca Center
 const RESTAURANT_LOCATION = {
-  lat: 7.2906, // Calinan, Davao City latitude
-  lng: 125.3764 // Calinan, Davao City longitude
+  lat: 14.9667, // Floridablanca latitude
+  lng: 120.5333 // Floridablanca longitude
 };
 
-// Delivery center: Villafuerte St, Calinan District, Davao City, Davao del Sur
+// Delivery center: Floridablanca, Pampanga
 // This is the point from which delivery distance is calculated
 const DELIVERY_CENTER = {
-  lat: 7.2906, // Villafuerte St, Calinan District, Davao City (approximate - will be geocoded)
-  lng: 125.3764, // Villafuerte St, Calinan District, Davao City (approximate - will be geocoded)
-  address: 'Villafuerte St, Calinan District, Davao City, Davao del Sur'
+  lat: 14.9667, // Floridablanca (approximate - will be geocoded)
+  lng: 120.5333, // Floridablanca (approximate - will be geocoded)
+  address: 'Floridablanca, Pampanga'
 };
 
 // Maximum delivery radius in kilometers from delivery center (adjust as needed)
@@ -50,10 +50,10 @@ export const useGoogleMaps = () => {
   // Get coordinates from address using OpenStreetMap Nominatim (FREE, no API key needed)
   const geocodeAddressOSM = async (address: string): Promise<{ lat: number; lng: number } | null> => {
     try {
-      // Add "Davao City, Philippines" to improve accuracy for local addresses
-      const fullAddress = address.includes('Davao') || address.includes('Philippines')
+      // Add "Pampanga, Philippines" to improve accuracy for local addresses
+      const fullAddress = address.includes('Pampanga') || address.includes('Philippines')
         ? address
-        : `${address}, Davao City, Philippines`;
+        : `${address}, Pampanga, Philippines`;
 
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fullAddress)}&limit=1&countrycodes=ph`,
@@ -346,6 +346,29 @@ export const useGoogleMaps = () => {
     }
   }, [deliveryCenterCoords]);
 
+  // Get driving route from OSRM for multiple waypoints
+  const getMultiPointRouteOSRM = async (points: { lat: number; lng: number }[]): Promise<[number, number][] | null> => {
+    if (points.length < 2) return null;
+    try {
+      const coordsString = points.map(p => `${p.lng},${p.lat}`).join(';');
+      const response = await fetch(
+        `https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=full&geometries=geojson`
+      );
+      
+      if (!response.ok) return null;
+      
+      const data = await response.json();
+      if (data.routes && data.routes.length > 0) {
+        // OSRM returns [lng, lat], Leaflet needs [lat, lng]
+        return data.routes[0].geometry.coordinates.map((coord: [number, number]) => [coord[1], coord[0]]);
+      }
+      return null;
+    } catch (err) {
+      console.error('OSRM multi-routing error:', err);
+      return null;
+    }
+  };
+
   // Get driving route from OSRM
   const getRouteOSRM = async (start: { lat: number; lng: number }, end: { lat: number; lng: number }): Promise<[number, number][] | null> => {
     try {
@@ -379,6 +402,7 @@ export const useGoogleMaps = () => {
     restaurantLocation: RESTAURANT_LOCATION,
     maxDeliveryRadius: MAX_DELIVERY_RADIUS_KM,
     geocodeAddressOSM,
-    getRouteOSRM
+    getRouteOSRM,
+    getMultiPointRouteOSRM
   };
 };

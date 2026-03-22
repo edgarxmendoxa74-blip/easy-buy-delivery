@@ -26,10 +26,13 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({
   const [selectedAddOns, setSelectedAddOns] = useState<(AddOn & { quantity: number })[]>([]);
 
   const calculatePrice = () => {
-    // If a variation is selected, use ONLY the variation price (it replaces the base price)
-    let price = selectedVariation 
-      ? selectedVariation.price
-      : (item.effectivePrice || item.basePrice);
+    // Base price is always included
+    let price = item.effectivePrice || item.basePrice;
+    
+    // Add variation price on top of base price
+    if (selectedVariation) {
+      price += selectedVariation.price;
+    }
     
     // Add add-ons prices
     selectedAddOns.forEach(addOn => {
@@ -281,7 +284,7 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({
                           <span className="font-medium text-gray-900">{variation.name}</span>
                         </div>
                         <span className="text-sm font-medium text-gray-700">
-                          ₱{variation.price.toFixed(2)}
+                          +₱{variation.price.toFixed(2)}
                         </span>
                       </label>
                     ))}

@@ -80,6 +80,22 @@ export interface SiteSettings {
   currency: string;
   currency_code: string;
   messenger_id: string;
+  // New Admin Settings
+  daily_operation_schedule?: string;
+  easy_buy_delivery_base_fee?: number;
+  easy_buy_multiple_store_fee?: number;
+  easy_buy_convenience_fee?: number;
+  easy_buy_convenience_enabled?: boolean;
+  easy_buy_starting_point_fee?: number;
+  easy_buy_starting_point_enabled?: boolean;
+  padala_base_fee?: number;
+  padala_additional_dropoff_fee?: number;
+  padala_convenience_fee?: number;
+  padala_convenience_enabled?: boolean;
+  angkas_transport_fee_per_km?: number;
+  feature_padala_enabled?: boolean;
+  feature_angkas_enabled?: boolean;
+  feature_pabili_enabled?: boolean;
 }
 
 // Store / Restaurant Types
@@ -110,6 +126,8 @@ export interface Restaurant {
   starting_point_lat?: number;
   starting_point_lng?: number;
   starting_point_enabled?: boolean;
+  starting_point_fee?: number;
+  starting_point_fee_enabled?: boolean;
   convenience_fee?: number;
   convenience_fee_enabled?: boolean;
   additional_store_fee?: number;

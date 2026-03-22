@@ -1,6 +1,6 @@
 // src/components/RestaurantManager.tsx
 import React, { useState } from 'react';
-import { ArrowLeft, Plus, Edit, Trash2, Save, X, Image as ImageIcon, Utensils, MapPin, Phone, User, ToggleLeft, ToggleRight } from 'lucide-react';
+import { ArrowLeft, Plus, Edit, Trash2, Save, X, Image as ImageIcon, Utensils, MapPin, Phone, User } from 'lucide-react';
 import { Restaurant } from '../types';
 import { useRestaurantsAdmin } from '../hooks/useRestaurantsAdmin';
 import ImageUpload from './ImageUpload';
@@ -35,6 +35,8 @@ interface RestaurantFormData {
   starting_point_lat: string;
   starting_point_lng: string;
   starting_point_enabled: boolean;
+  starting_point_fee: number;
+  starting_point_fee_enabled: boolean;
   convenience_fee: number;
   convenience_fee_enabled: boolean;
   additional_store_fee: number;
@@ -85,6 +87,8 @@ const RestaurantManager: React.FC<RestaurantManagerProps> = ({ onBack }) => {
     starting_point_lat: '',
     starting_point_lng: '',
     starting_point_enabled: false,
+    starting_point_fee: 0,
+    starting_point_fee_enabled: false,
     convenience_fee: 0,
     convenience_fee_enabled: false,
     additional_store_fee: 0
@@ -120,6 +124,8 @@ const RestaurantManager: React.FC<RestaurantManagerProps> = ({ onBack }) => {
       starting_point_lat: '',
       starting_point_lng: '',
       starting_point_enabled: false,
+      starting_point_fee: 0,
+      starting_point_fee_enabled: false,
       convenience_fee: 0,
       convenience_fee_enabled: false,
       additional_store_fee: 0
@@ -152,6 +158,8 @@ const RestaurantManager: React.FC<RestaurantManagerProps> = ({ onBack }) => {
       starting_point_lat: restaurant.starting_point_lat?.toString() || '',
       starting_point_lng: restaurant.starting_point_lng?.toString() || '',
       starting_point_enabled: restaurant.starting_point_enabled ?? false,
+      starting_point_fee: restaurant.starting_point_fee || 0,
+      starting_point_fee_enabled: restaurant.starting_point_fee_enabled ?? false,
       convenience_fee: restaurant.convenience_fee || 0,
       convenience_fee_enabled: restaurant.convenience_fee_enabled ?? false,
       additional_store_fee: restaurant.additional_store_fee || 0
@@ -191,6 +199,8 @@ const RestaurantManager: React.FC<RestaurantManagerProps> = ({ onBack }) => {
         starting_point_lat: formData.starting_point_lat ? parseFloat(formData.starting_point_lat) : undefined,
         starting_point_lng: formData.starting_point_lng ? parseFloat(formData.starting_point_lng) : undefined,
         starting_point_enabled: formData.starting_point_enabled,
+        starting_point_fee: formData.starting_point_fee || 0,
+        starting_point_fee_enabled: formData.starting_point_fee_enabled,
         convenience_fee: formData.convenience_fee || 0,
         convenience_fee_enabled: formData.convenience_fee_enabled,
         additional_store_fee: formData.additional_store_fee || 0
@@ -512,7 +522,28 @@ const RestaurantManager: React.FC<RestaurantManagerProps> = ({ onBack }) => {
                     placeholder="e.g., 125.4584"
                   />
                 </div>
-                <p className="md:col-span-2 text-xs text-amber-700">
+                <div className="md:col-span-2 border-t border-amber-200 pt-4 mt-2">
+                  <ToggleSwitch
+                    enabled={formData.starting_point_fee_enabled}
+                    onChange={(v) => setFormData({ ...formData, starting_point_fee_enabled: v })}
+                    label="Enable Starting Point Fee"
+                    sublabel="Add a specific fee for this starting point"
+                  />
+                  {formData.starting_point_fee_enabled && (
+                    <div className="mt-3">
+                      <label className="block text-sm font-medium text-black mb-2">Starting Point Fee (₱)</label>
+                      <input
+                        type="number"
+                        value={formData.starting_point_fee}
+                        onChange={(e) => setFormData({ ...formData, starting_point_fee: Number(e.target.value) || 0 })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        placeholder="0"
+                        min="0"
+                      />
+                    </div>
+                  )}
+                </div>
+                <p className="md:col-span-2 text-xs text-amber-700 mt-2">
                   ⚠️ This starting point is for internal delivery fee computation only and will NOT be visible to the customer.
                 </p>
               </div>

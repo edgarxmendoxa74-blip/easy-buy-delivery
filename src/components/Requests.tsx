@@ -474,7 +474,7 @@ Thank you for your Angkas/Padala request. We will get back to you soon! 🛵`;
             </div>
           </div>
           <DeliveryMap
-            pickupLocation={pickupCoords || { lat: 7.2906, lng: 125.3764 }}
+            pickupLocation={pickupCoords || { lat: 14.9667, lng: 120.5333 }}
             dropoffLocation={dropoffCoords}
             distance={distance}
             address={angkasData.dropoff_address}

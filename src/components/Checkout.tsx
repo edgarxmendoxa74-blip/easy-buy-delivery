@@ -5,6 +5,7 @@ import { usePaymentMethods } from '../hooks/usePaymentMethods';
 import { useLocationService } from '../hooks/useLocationService';
 import { usePromoCodes } from '../hooks/usePromoCodes';
 import { useSiteSettings } from '../hooks/useSiteSettings';
+import { useRestaurants } from '../hooks/useRestaurants';
 import DeliveryMap from './DeliveryMap';
 
 interface CheckoutProps {
@@ -18,6 +19,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
   const { calculateDistance, calculateDeliveryFee, isWithinDeliveryArea, restaurantLocation, maxDeliveryRadius, geocodeAddressOSM, getRouteOSRM } = useLocationService();
   const { validatePromoCode, incrementUsage } = usePromoCodes();
   const { siteSettings } = useSiteSettings();
+  const { restaurants } = useRestaurants();
 
   const [step, setStep] = useState<'details' | 'payment'>('details');
   const [customerName, setCustomerName] = useState('');
@@ -27,7 +29,50 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
   const [landmark, setLandmark] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cod');
   const [notes, setNotes] = useState('');
-  const [convenienceFee] = useState<number>(0);
+  
+  // Group items by restaurant
+  const groupedItems = React.useMemo(() => {
+    const groups: Record<string, CartItem[]> = {};
+    cartItems.forEach(item => {
+      const restaurantName = item.restaurantName || 'Other Items';
+      if (!groups[restaurantName]) {
+        groups[restaurantName] = [];
+      }
+      groups[restaurantName].push(item);
+    });
+    return groups;
+  }, [cartItems]);
+
+  const convenienceFee = siteSettings?.easy_buy_convenience_enabled ? (siteSettings.easy_buy_convenience_fee || 0) : 0;
+  
+  const startingPointFee = React.useMemo(() => {
+    let maxFee = 0;
+    let foundStoreFee = false;
+    
+    // Check if any store in the cart has a specific starting point fee enabled
+    Object.keys(groupedItems).forEach(storeName => {
+      const store = restaurants.find(r => r.name === storeName);
+      if (store && store.starting_point_fee_enabled) {
+        foundStoreFee = true;
+        if ((store.starting_point_fee || 0) > maxFee) {
+          maxFee = store.starting_point_fee || 0;
+        }
+      }
+    });
+
+    if (foundStoreFee) {
+      return maxFee;
+    }
+
+    // Fallback to global setting
+    if (siteSettings?.easy_buy_starting_point_enabled) {
+      return siteSettings.easy_buy_starting_point_fee || 0;
+    }
+    return 0;
+  }, [groupedItems, restaurants, siteSettings]);
+  
+  const additionalStoreCount = Math.max(0, Object.keys(groupedItems).length - 1);
+  const additionalStoreFee = additionalStoreCount > 0 ? additionalStoreCount * (siteSettings?.easy_buy_multiple_store_fee || 0) : 0;
   // Delivery fee calculation
   const [distance, setDistance] = useState<number | null>(null);
   const [deliveryFee, setDeliveryFee] = useState<number>(65); // Default base fee
@@ -253,10 +298,10 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
     }
   }, [address, calculateDistance, calculateDeliveryFee, isWithinDeliveryArea]);
 
-  // Calculate total price including delivery fee, convenience fee, and discount
+  // Calculate total price including delivery fee, starting point, additional store, convenience fee, and discount
   const finalTotalPrice = React.useMemo(() => {
-    return Math.max(0, totalPrice + deliveryFee + convenienceFee - discountAmount);
-  }, [totalPrice, deliveryFee, convenienceFee, discountAmount]);
+    return Math.max(0, totalPrice + deliveryFee + startingPointFee + additionalStoreFee + convenienceFee - discountAmount);
+  }, [totalPrice, deliveryFee, startingPointFee, additionalStoreFee, convenienceFee, discountAmount]);
 
   // Alias for consistency with other parts of the code
   const grandTotal = finalTotalPrice;
@@ -333,18 +378,7 @@ const Checkout: React.FC<CheckoutProps> = ({ cartItems, totalPrice, onBack }) =>
     setPromoError(null);
   };
 
-  // Group items by restaurant
-  const groupedItems = React.useMemo(() => {
-    const groups: Record<string, CartItem[]> = {};
-    cartItems.forEach(item => {
-      const restaurantName = item.restaurantName || 'Other Items';
-      if (!groups[restaurantName]) {
-        groups[restaurantName] = [];
-      }
-      groups[restaurantName].push(item);
-    });
-    return groups;
-  }, [cartItems]);
+  // (groupedItems moved to top)
 
   const selectedPaymentMethod = paymentMethods.find(method => method.id === paymentMethod);
 
@@ -387,9 +421,8 @@ ${items.map(item => {
     }).join('\n')}`).join('\n')}
 
 💰 Subtotal: ₱${totalPrice}
-🛵 Delivery Fee: ₱${deliveryFee.toFixed(2)}${distance !== null ? ` (${distance} km)` : ''}${convenienceFee > 0 ? `\n🏷️ Convenience Fee: ₱${convenienceFee.toFixed(2)}` : ''}
-${appliedPromo ? `🏷️ Promo Code: ${appliedPromo.code} (-₱${discountAmount.toFixed(2)})` : ''}
-💰 TOTAL BILL: ₱${grandTotal.toFixed(2)}
+🛵 Delivery Fee: ₱${(deliveryFee + startingPointFee).toFixed(2)}${distance !== null ? ` (${distance} km)` : ''}
+${startingPointFee > 0 ? `   ↳ Includes Starting Point Fee: ₱${startingPointFee.toFixed(2)}\n` : ''}${additionalStoreFee > 0 ? `🏪 Additional Store Fee: ₱${additionalStoreFee.toFixed(2)}\n` : ''}${convenienceFee > 0 ? `🏷️ Convenience Fee: ₱${convenienceFee.toFixed(2)}\n` : ''}${appliedPromo ? `🏷️ Promo Code: ${appliedPromo.code} (-₱${discountAmount.toFixed(2)})\n` : ''}💰 TOTAL BILL: ₱${grandTotal.toFixed(2)}
 
 ⚠️ Notice: The price will be different at the store or restaurant.
 
@@ -473,12 +506,24 @@ Please confirm this order to proceed. Thank you for choosing Easy Buy Delivery! 
                     <span className="text-xs text-gray-500 ml-1">({distance} km)</span>
                   )}
                 </span>
-                <span className="text-gray-900 font-semibold">₱{deliveryFee.toFixed(2)}</span>
+                <span className="text-gray-900 font-semibold">₱{(deliveryFee + startingPointFee).toFixed(2)}</span>
               </div>
+              {startingPointFee > 0 && (
+                <div className="flex items-center justify-between text-xs text-gray-500 pl-5">
+                  <span>↳ Includes Starting Point Fee:</span>
+                  <span>₱{startingPointFee.toFixed(2)}</span>
+                </div>
+              )}
+              {additionalStoreFee > 0 && (
+                 <div className="flex items-center justify-between text-sm">
+                   <span className="text-gray-600">Additional Store Fee:</span>
+                   <span className="text-gray-900 font-semibold">₱{additionalStoreFee.toFixed(2)}</span>
+                 </div>
+              )}
               {convenienceFee > 0 && (
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-600">Convenience Fee:</span>
-                  <span className="text-gray-900">₱{convenienceFee.toFixed(2)}</span>
+                  <span className="text-gray-900 font-semibold">₱{convenienceFee.toFixed(2)}</span>
                 </div>
               )}
 
@@ -845,12 +890,24 @@ Please confirm this order to proceed. Thank you for choosing Easy Buy Delivery! 
                   <span className="text-xs text-gray-500 ml-1">({distance} km)</span>
                 )}
               </span>
-              <span className="text-gray-900 font-semibold">₱{deliveryFee.toFixed(2)}</span>
+              <span className="text-gray-900 font-semibold">₱{(deliveryFee + startingPointFee).toFixed(2)}</span>
             </div>
+            {startingPointFee > 0 && (
+              <div className="flex items-center justify-between text-xs text-gray-500 pl-5">
+                <span>↳ Includes Starting Point Fee:</span>
+                <span>₱{startingPointFee.toFixed(2)}</span>
+              </div>
+            )}
+            {additionalStoreFee > 0 && (
+               <div className="flex items-center justify-between text-sm">
+                 <span className="text-gray-600">Additional Store Fee:</span>
+                 <span className="text-gray-900 font-semibold">₱{additionalStoreFee.toFixed(2)}</span>
+               </div>
+            )}
             {convenienceFee > 0 && (
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-600">Convenience Fee:</span>
-                <span className="text-gray-900">₱{convenienceFee.toFixed(2)}</span>
+                <span className="text-gray-900 font-semibold">₱{convenienceFee.toFixed(2)}</span>
               </div>
             )}
 

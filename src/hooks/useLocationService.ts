@@ -1,17 +1,17 @@
 import { useState, useCallback } from 'react';
 
-// Restaurant location: Calinan District Center
+// Restaurant location: Floridablanca Center
 const RESTAURANT_LOCATION = {
-  lat: 7.201558576842343, // Updated Location
-  lng: 125.45844856673499 // Updated Location
+  lat: 14.9667, // Updated Location
+  lng: 120.5333 // Updated Location
 };
 
-// Delivery center: Calinan District, Davao City
+// Delivery center: Floridablanca, Pampanga
 // This is the point from which delivery distance is calculated
 const DELIVERY_CENTER = {
-  lat: 7.201558576842343, // Updated Delivery Center
-  lng: 125.45844856673499, // Updated Delivery Center
-  address: 'Calinan District, Davao City, Davao del Sur'
+  lat: 14.9667, // Updated Delivery Center
+  lng: 120.5333, // Updated Delivery Center
+  address: 'Floridablanca, Pampanga'
 };
 
 // Maximum delivery radius in kilometers from delivery center (adjust as needed)
@@ -46,16 +46,16 @@ export const useLocationService = () => {
     return straightLineDistance * 1.2;
   };
 
-  // Viewbox for Davao City/Calinan area to bias search results
-  // Format: min_lon,min_lat,max_lon,max_lat (approximate bounding box for Davao)
-  const VIEWBOX = '125.30,7.00,125.70,7.60';
+  // Viewbox for Floridablanca area to bias search results
+  // Format: min_lon,min_lat,max_lon,max_lat (approximate bounding box for Floridablanca)
+  const VIEWBOX = '120.40,14.80,120.70,15.10';
 
   // Geocode using Photon (Komoot) - Better for fuzzy search and typos
   const geocodeAddressPhoton = async (query: string): Promise<{ lat: number; lng: number } | null> => {
     try {
-      // Bias towards Calinan/Davao
-      const lat = 7.201;
-      const lon = 125.458;
+      // Bias towards Floridablanca
+      const lat = 14.9667;
+      const lon = 120.5333;
       const response = await fetch(
         `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lat=${lat}&lon=${lon}&limit=3`
       );
@@ -81,7 +81,7 @@ export const useLocationService = () => {
         // (Photon sometimes misses country tags for local streets)
         const first = data.features[0];
         const props = first.properties;
-        if (props.city === 'Davao City' || props.state === 'Davao Region') {
+        if (props.city === 'Floridablanca' || props.state === 'Pampanga') {
            return {
             lat: first.geometry.coordinates[1],
             lng: first.geometry.coordinates[0]
@@ -124,9 +124,9 @@ export const useLocationService = () => {
     let coords = await geocodeAddressPhoton(address);
     if (coords) return coords;
 
-    // 2. Try Photon with "Calinan" appended if not present
-    if (!address.toLowerCase().includes('calinan')) {
-      coords = await geocodeAddressPhoton(`${address}, Calinan`);
+    // 2. Try Photon with "Floridablanca" appended if not present
+    if (!address.toLowerCase().includes('floridablanca')) {
+      coords = await geocodeAddressPhoton(`${address}, Floridablanca`);
       if (coords) return coords;
     }
 
@@ -134,17 +134,17 @@ export const useLocationService = () => {
     coords = await geocodeAddressNominatim(address);
     if (coords) return coords;
 
-    // 4. Fallback: Try with "Davao City" appended
-    const fullAddress = address.includes('Davao') || address.includes('Philippines') 
+    // 4. Fallback: Try with "Pampanga" appended
+    const fullAddress = address.includes('Pampanga') || address.includes('Philippines') 
       ? address 
-      : `${address}, Davao City, Philippines`;
+      : `${address}, Pampanga, Philippines`;
     
     coords = await geocodeAddressNominatim(fullAddress);
     if (coords) return coords;
 
-    // 5. Last Resort: Calinan District Center
-    if (address.toLowerCase().includes('calinan')) {
-       return await geocodeAddressNominatim('Calinan District, Davao City');
+    // 5. Last Resort: Floridablanca Center
+    if (address.toLowerCase().includes('floridablanca')) {
+       return await geocodeAddressNominatim('Floridablanca, Pampanga');
     }
 
     return null;

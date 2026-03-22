@@ -30,7 +30,23 @@ export const useSiteSettings = () => {
         facebook_handle: data.find(s => s.id === 'facebook_handle')?.value || '',
         currency: data.find(s => s.id === 'currency')?.value || '₱',
         currency_code: data.find(s => s.id === 'currency_code')?.value || 'PHP',
-        messenger_id: data.find(s => s.id === 'messenger_id')?.value || '61558704207383'
+        messenger_id: data.find(s => s.id === 'messenger_id')?.value || '61558704207383',
+        // New Admin Settings
+        daily_operation_schedule: data.find(s => s.id === 'daily_operation_schedule')?.value || '',
+        easy_buy_delivery_base_fee: Number(data.find(s => s.id === 'easy_buy_delivery_base_fee')?.value) || 0,
+        easy_buy_multiple_store_fee: Number(data.find(s => s.id === 'easy_buy_multiple_store_fee')?.value) || 0,
+        easy_buy_convenience_fee: Number(data.find(s => s.id === 'easy_buy_convenience_fee')?.value) || 0,
+        easy_buy_convenience_enabled: data.find(s => s.id === 'easy_buy_convenience_enabled')?.value === 'true',
+        easy_buy_starting_point_fee: Number(data.find(s => s.id === 'easy_buy_starting_point_fee')?.value) || 0,
+        easy_buy_starting_point_enabled: data.find(s => s.id === 'easy_buy_starting_point_enabled')?.value === 'true',
+        padala_base_fee: Number(data.find(s => s.id === 'padala_base_fee')?.value) || 0,
+        padala_additional_dropoff_fee: Number(data.find(s => s.id === 'padala_additional_dropoff_fee')?.value) || 0,
+        padala_convenience_fee: Number(data.find(s => s.id === 'padala_convenience_fee')?.value) || 0,
+        padala_convenience_enabled: data.find(s => s.id === 'padala_convenience_enabled')?.value === 'true',
+        angkas_transport_fee_per_km: Number(data.find(s => s.id === 'angkas_transport_fee_per_km')?.value) || 0,
+        feature_padala_enabled: data.find(s => s.id === 'feature_padala_enabled')?.value !== 'false',
+        feature_angkas_enabled: data.find(s => s.id === 'feature_angkas_enabled')?.value !== 'false',
+        feature_pabili_enabled: data.find(s => s.id === 'feature_pabili_enabled')?.value !== 'false',
       };
 
       setSiteSettings(settings);
@@ -69,7 +85,7 @@ export const useSiteSettings = () => {
       const updatePromises = Object.entries(updates).map(([key, value]) =>
         supabase
           .from('site_settings')
-          .upsert({ id: key, value, updated_at: new Date().toISOString() })
+          .upsert({ id: key, value: String(value), updated_at: new Date().toISOString() })
       );
 
       const results = await Promise.all(updatePromises);

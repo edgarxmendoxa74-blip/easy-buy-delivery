@@ -37,7 +37,23 @@ export const useRestaurants = () => {
         active: item.active,
         sort_order: item.sort_order,
         created_at: item.created_at,
-        updated_at: item.updated_at
+        updated_at: item.updated_at,
+        store_address: item.store_address || undefined,
+        pin_location: item.pin_location || undefined,
+        contact_person: item.contact_person || undefined,
+        contact_number: item.contact_number || undefined,
+        store_availability: item.store_availability ?? true,
+        markup_type: item.markup_type || 'peso',
+        markup_value: item.markup_value || 0,
+        markup_enabled: item.markup_enabled ?? false,
+        starting_point_lat: item.starting_point_lat || undefined,
+        starting_point_lng: item.starting_point_lng || undefined,
+        starting_point_enabled: item.starting_point_enabled ?? false,
+        starting_point_fee: item.starting_point_fee || 0,
+        starting_point_fee_enabled: item.starting_point_fee_enabled ?? false,
+        convenience_fee: item.convenience_fee || 0,
+        convenience_fee_enabled: item.convenience_fee_enabled ?? false,
+        additional_store_fee: item.additional_store_fee || 0
       }));
 
       setRestaurants(formattedRestaurants);

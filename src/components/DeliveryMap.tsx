@@ -22,11 +22,12 @@ L.Marker.prototype.options.icon = DefaultIcon;
 
 interface DeliveryMapProps {
   pickupLocation: { lat: number; lng: number };
-  dropoffLocation: { lat: number; lng: number } | null;
+  dropoffLocation?: { lat: number; lng: number } | null;
+  dropoffLocations?: { id: string; lat: number; lng: number; address?: string }[];
   distance?: number | null;
   address?: string;
   onPickupSelect?: (lat: number, lng: number) => void;
-  onDropoffSelect?: (lat: number, lng: number) => void;
+  onDropoffSelect?: (lat: number, lng: number, id?: string) => void;
   routeCoordinates?: [number, number][] | null;
   fitBounds?: boolean;
   pickupLabel?: string;
@@ -39,20 +40,26 @@ interface DeliveryMapProps {
 }
 
 // Component to fit map bounds to show both markers
-function MapBounds({ pickupLocation, dropoffLocation, fitBounds = true }: { pickupLocation: { lat: number; lng: number }; dropoffLocation: { lat: number; lng: number } | null; fitBounds?: boolean }) {
+function MapBounds({ pickupLocation, dropoffLocation, dropoffLocations, fitBounds = true }: { pickupLocation: { lat: number; lng: number }; dropoffLocation?: { lat: number; lng: number } | null; dropoffLocations?: { id: string; lat: number; lng: number }[]; fitBounds?: boolean }) {
   const map = useMap();
 
   useEffect(() => {
-    if (dropoffLocation && fitBounds) {
-      const bounds = L.latLngBounds(
-        [pickupLocation.lat, pickupLocation.lng],
-        [dropoffLocation.lat, dropoffLocation.lng]
-      );
-      map.fitBounds(bounds, { padding: [50, 50] });
-    } else if (!dropoffLocation) {
-      map.setView([pickupLocation.lat, pickupLocation.lng], 13);
+    if (fitBounds) {
+      if (dropoffLocations && dropoffLocations.length > 0) {
+        const bounds = L.latLngBounds([pickupLocation.lat, pickupLocation.lng], [pickupLocation.lat, pickupLocation.lng]);
+        dropoffLocations.forEach(loc => bounds.extend([loc.lat, loc.lng]));
+        map.fitBounds(bounds, { padding: [50, 50] });
+      } else if (dropoffLocation) {
+        const bounds = L.latLngBounds(
+          [pickupLocation.lat, pickupLocation.lng],
+          [dropoffLocation.lat, dropoffLocation.lng]
+        );
+        map.fitBounds(bounds, { padding: [50, 50] });
+      } else {
+        map.setView([pickupLocation.lat, pickupLocation.lng], 13);
+      }
     }
-  }, [map, pickupLocation, dropoffLocation, fitBounds]);
+  }, [map, pickupLocation, dropoffLocation, dropoffLocations, fitBounds]);
 
   return null;
 }
@@ -60,6 +67,7 @@ function MapBounds({ pickupLocation, dropoffLocation, fitBounds = true }: { pick
 const DeliveryMap: React.FC<DeliveryMapProps> = ({
   pickupLocation,
   dropoffLocation,
+  dropoffLocations,
   distance,
   address,
   onPickupSelect,
@@ -198,7 +206,7 @@ const DeliveryMap: React.FC<DeliveryMapProps> = ({
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
         />
 
-        <MapBounds pickupLocation={pickupLocation} dropoffLocation={dropoffLocation} fitBounds={fitBounds} />
+        <MapBounds pickupLocation={pickupLocation} dropoffLocation={dropoffLocation} dropoffLocations={dropoffLocations} fitBounds={fitBounds} />
         <MapEvents />
 
         {/* Pickup Marker */}
@@ -217,38 +225,62 @@ const DeliveryMap: React.FC<DeliveryMapProps> = ({
           </Popup>
         </Marker>
 
-        {/* Dropoff Marker */}
-        {dropoffLocation && (
-          <>
-            <Marker
-              draggable={!!onDropoffSelect}
-              eventHandlers={dropoffEventHandlers}
-              position={[dropoffLocation.lat, dropoffLocation.lng]}
-              icon={dynamicDropoffIcon}
-              ref={dropoffMarkerRef}
-            >
-              <Popup>
-                <div className="text-center">
-                  <p className="font-semibold text-blue-600">{dropoffLabel}</p>
-                  {selectionMode === 'dropoff' && <p className="text-xs text-blue-500 font-bold mt-1">SELECTING DROP-OFF...</p>}
-                  {address && <p className="text-xs text-gray-600 mt-1">{address}</p>}
-                  {distance && (
-                    <p className="text-xs font-semibold text-gray-800 mt-1">
-                      Distance: {distance.toFixed(1)} km
-                    </p>
-                  )}
-                </div>
-              </Popup>
-            </Marker>
+        {/* Multiple Dropoff Markers */}
+        {dropoffLocations?.map((loc, index) => (
+          <Marker
+            key={loc.id}
+            draggable={!!onDropoffSelect}
+            eventHandlers={{
+              dragend(e) {
+                if (onDropoffSelect) {
+                  onDropoffSelect(e.target.getLatLng().lat, e.target.getLatLng().lng, loc.id);
+                }
+              }
+            }}
+            position={[loc.lat, loc.lng]}
+            icon={dynamicDropoffIcon}
+          >
+            <Popup>
+              <div className="text-center">
+                <p className="font-semibold text-blue-600">Drop-off {index + 1}</p>
+                {loc.address && <p className="text-xs text-gray-600 mt-1">{loc.address}</p>}
+              </div>
+            </Popup>
+          </Marker>
+        ))}
 
-            {/* Route line connecting pickup and dropoff */}
-            <Polyline
-              positions={path}
-              color={pickupColor}
-              weight={5}
-              opacity={0.8}
-            />
-          </>
+        {/* Single Dropoff Marker (Fallback) */}
+        {dropoffLocation && (!dropoffLocations || dropoffLocations.length === 0) && (
+          <Marker
+            draggable={!!onDropoffSelect}
+            eventHandlers={dropoffEventHandlers}
+            position={[dropoffLocation.lat, dropoffLocation.lng]}
+            icon={dynamicDropoffIcon}
+            ref={dropoffMarkerRef}
+          >
+            <Popup>
+              <div className="text-center">
+                <p className="font-semibold text-blue-600">{dropoffLabel}</p>
+                {selectionMode === 'dropoff' && <p className="text-xs text-blue-500 font-bold mt-1">SELECTING DROP-OFF...</p>}
+                {address && <p className="text-xs text-gray-600 mt-1">{address}</p>}
+                {distance && (
+                  <p className="text-xs font-semibold text-gray-800 mt-1">
+                    Distance: {distance.toFixed(1)} km
+                  </p>
+                )}
+              </div>
+            </Popup>
+          </Marker>
+        )}
+
+        {/* Route line connecting pickup and dropoff(s) */}
+        {(dropoffLocation || (dropoffLocations && dropoffLocations.length > 0)) && (
+          <Polyline
+            positions={path}
+            color={pickupColor}
+            weight={5}
+            opacity={0.8}
+          />
         )}
       </MapContainer>
     </div>

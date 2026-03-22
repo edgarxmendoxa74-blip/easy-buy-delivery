@@ -25,8 +25,17 @@ interface StoreOrder {
   items: OrderItem[];
 }
 
+interface PadalaDropoff {
+  id: string;
+  receiver_name: string;
+  contact_number: string;
+  address: string;
+  landmark: string;
+  coords: { lat: number; lng: number } | null;
+}
+
 const PadalaBooking: React.FC<PadalaBookingProps> = ({ onBack, mode = 'full' }) => {
-  const { calculateDistanceBetweenAddresses, calculateDeliveryFee, geocodeAddressOSM, getRouteOSRM } = useGoogleMaps();
+  const { calculateDistanceBetweenAddresses, calculateDeliveryFee, geocodeAddressOSM, getMultiPointRouteOSRM } = useGoogleMaps();
   const { siteSettings } = useSiteSettings();
 
   // Customer details
@@ -40,7 +49,7 @@ const PadalaBooking: React.FC<PadalaBookingProps> = ({ onBack, mode = 'full' }) 
   });
 
   // Location state for Pabili
-  const pickupCoords = { lat: 7.2906, lng: 125.3764 }; // Default to Calinan
+  const pickupCoords = { lat: 14.9667, lng: 120.5333 }; // Default to Floridablanca
   const [dropoffCoords, setDropoffCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [routeCoordinates, setRouteCoordinates] = useState<[number, number][] | null>(null);
   const [shouldFitBounds, setShouldFitBounds] = useState(true);
@@ -61,7 +70,6 @@ const PadalaBooking: React.FC<PadalaBookingProps> = ({ onBack, mode = 'full' }) 
     customer_name: '',
     contact_number: '',
     pickup_address: '',
-    delivery_address: '',
     item_description: '',
     item_weight: '',
     item_value: '',
@@ -73,7 +81,9 @@ const PadalaBooking: React.FC<PadalaBookingProps> = ({ onBack, mode = 'full' }) 
 
   // Location state for Padala
   const [padalaPickupCoords, setPadalaPickupCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [padalaDropoffCoords, setPadalaDropoffCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [padalaDropoffs, setPadalaDropoffs] = useState<PadalaDropoff[]>([
+    { id: `dropoff-${Date.now()}`, receiver_name: '', contact_number: '', address: '', landmark: '', coords: null }
+  ]);
 
   const [distance, setDistance] = useState<number | null>(null);
   const [deliveryFee, setDeliveryFee] = useState<number>(65);
@@ -89,44 +99,97 @@ const PadalaBooking: React.FC<PadalaBookingProps> = ({ onBack, mode = 'full' }) 
   };
 
   const calculatePadalaFee = async () => {
-    if (!padalaData.pickup_address.trim() || !padalaData.delivery_address.trim()) {
+    if (!padalaData.pickup_address.trim() || !padalaDropoffs[0].address.trim()) {
       return;
     }
 
     setIsCalculating(true);
     try {
-      // Geocode both addresses for the map
       const pCoords = await geocodeAddressOSM(padalaData.pickup_address);
-      const dCoords = await geocodeAddressOSM(padalaData.delivery_address);
-
       if (pCoords) setPadalaPickupCoords(pCoords);
-      if (dCoords) setPadalaDropoffCoords(dCoords);
 
-      const result = await calculateDistanceBetweenAddresses(
-        padalaData.pickup_address,
-        padalaData.delivery_address
-      );
+      let totalDistance = 0;
+      let allCoords: {lat: number, lng: number}[] = pCoords ? [pCoords] : [];
+      let previousPoint = pCoords ? `${pCoords.lat},${pCoords.lng}` : padalaData.pickup_address;
+      
+      const newDropoffs = [...padalaDropoffs];
 
-      if (result && !isNaN(result.distance)) {
-        setDistance(result.distance);
-        const fee = calculateDeliveryFee(result.distance);
+      for (let i = 0; i < newDropoffs.length; i++) {
+        const dropoff = newDropoffs[i];
+        if (!dropoff.address.trim()) continue;
+
+        const dCoords = dropoff.coords || await geocodeAddressOSM(dropoff.address);
+        if (dCoords) {
+           newDropoffs[i].coords = dCoords;
+           const result = await calculateDistanceBetweenAddresses(
+             previousPoint,
+             `${dCoords.lat},${dCoords.lng}`
+           );
+           if (result && !isNaN(result.distance)) {
+             totalDistance += result.distance;
+             previousPoint = `${dCoords.lat},${dCoords.lng}`;
+             allCoords.push(dCoords);
+           }
+        }
+      }
+      setPadalaDropoffs(newDropoffs);
+
+      if (totalDistance > 0) {
+        setDistance(Math.round(totalDistance * 10) / 10);
+        
+        // Fee calculation
+        let fee = calculateDeliveryFee(totalDistance); 
+        const padalaBaseFee = siteSettings?.padala_base_fee ?? 65;
+        let distanceFee = fee - 65; 
+        fee = padalaBaseFee + distanceFee;
+        
+        // Additional dropoffs
+        if (newDropoffs.length > 1) {
+          const additionalDropoffFee = siteSettings?.padala_additional_dropoff_fee ?? 50;
+          fee += additionalDropoffFee * (newDropoffs.length - 1);
+        }
+
+        // Convenience fee
+        if (siteSettings?.padala_convenience_enabled) {
+          fee += siteSettings?.padala_convenience_fee ?? 0;
+        }
+
         setDeliveryFee(fee);
 
-        if (pCoords && dCoords) {
-          const route = await getRouteOSRM(pCoords, dCoords);
+        if (allCoords.length > 1 && getMultiPointRouteOSRM) {
+          const route = await getMultiPointRouteOSRM(allCoords);
           setRouteCoordinates(route);
         }
       } else {
         setDistance(null);
-        setDeliveryFee(65);
+        setDeliveryFee(siteSettings?.padala_base_fee ?? 65);
       }
     } catch (error) {
       console.error('Error calculating fee:', error);
       setDistance(null);
-      setDeliveryFee(65);
+      setDeliveryFee(siteSettings?.padala_base_fee ?? 65);
     } finally {
       setIsCalculating(false);
     }
+  };
+
+  const addPadalaDropoff = () => {
+    setPadalaDropoffs(prev => [
+      ...prev,
+      { id: `dropoff-${Date.now()}`, receiver_name: '', contact_number: '', address: '', landmark: '', coords: null }
+    ]);
+  };
+
+  const removePadalaDropoff = (dropoffId: string) => {
+    if (padalaDropoffs.length <= 1) return;
+    setPadalaDropoffs(prev => prev.filter(d => d.id !== dropoffId));
+    setTimeout(calculatePadalaFee, 500);
+  };
+
+  const updatePadalaDropoff = (dropoffId: string, field: keyof PadalaDropoff, value: any) => {
+    setPadalaDropoffs(prev =>
+      prev.map(d => d.id === dropoffId ? { ...d, [field]: value } : d)
+    );
   };
 
   // Auto-locate effect for Pabili Delivery Address
@@ -149,61 +212,20 @@ const PadalaBooking: React.FC<PadalaBookingProps> = ({ onBack, mode = 'full' }) 
     return () => clearTimeout(timer);
   }, [customerData.address, mode]);
 
-  // Auto-locate effect for Padala Pickup Address
+  // Avoid auto-locate effect loop issues by checking length and using timeout for first dropoff (we don't wanna retrigger route loop constantly)
   useEffect(() => {
-    if (mode !== 'full' || !padalaData.pickup_address.trim() || padalaData.pickup_address.length < 5) return;
+    if (mode !== 'full' || padalaDropoffs.length === 0) return;
+    const firstDropoff = padalaDropoffs[0];
+    if (!firstDropoff.address.trim() || firstDropoff.address.length < 5) return;
 
     const timer = setTimeout(async () => {
-      const coords = await geocodeAddressOSM(padalaData.pickup_address);
-      if (coords) {
-        setPadalaPickupCoords(coords);
-        setShouldFitBounds(true);
-        
-        if (padalaDropoffCoords) {
-          const result = await calculateDistanceBetweenAddresses(
-            `${coords.lat},${coords.lng}`,
-            `${padalaDropoffCoords.lat},${padalaDropoffCoords.lng}`
-          );
-          if (result && !isNaN(result.distance)) {
-            setDistance(result.distance);
-            setDeliveryFee(calculateDeliveryFee(result.distance));
-            const route = await getRouteOSRM(coords, padalaDropoffCoords);
-            setRouteCoordinates(route);
-          }
-        }
+      if (!firstDropoff.coords) {
+         calculatePadalaFee();
       }
-    }, 1000);
+    }, 1500);
 
     return () => clearTimeout(timer);
-  }, [padalaData.pickup_address, mode]);
-
-  // Auto-locate effect for Padala Delivery Address
-  useEffect(() => {
-    if (mode !== 'full' || !padalaData.delivery_address.trim() || padalaData.delivery_address.length < 5) return;
-
-    const timer = setTimeout(async () => {
-      const coords = await geocodeAddressOSM(padalaData.delivery_address);
-      if (coords) {
-        setPadalaDropoffCoords(coords);
-        setShouldFitBounds(true);
-
-        if (padalaPickupCoords) {
-          const result = await calculateDistanceBetweenAddresses(
-            `${padalaPickupCoords.lat},${padalaPickupCoords.lng}`,
-            `${coords.lat},${coords.lng}`
-          );
-          if (result && !isNaN(result.distance)) {
-            setDistance(result.distance);
-            setDeliveryFee(calculateDeliveryFee(result.distance));
-            const route = await getRouteOSRM(padalaPickupCoords, coords);
-            setRouteCoordinates(route);
-          }
-        }
-      }
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, [padalaData.delivery_address, mode]);
+  }, [padalaDropoffs[0]?.address, mode]);
 
   const handlePadalaPickupSelect = async (lat: number, lng: number) => {
     setPadalaPickupCoords({ lat, lng });
@@ -222,22 +244,11 @@ const PadalaBooking: React.FC<PadalaBookingProps> = ({ onBack, mode = 'full' }) 
       console.error('Reverse geocoding error:', err);
     }
 
-    if (padalaDropoffCoords) {
-      const result = await calculateDistanceBetweenAddresses(
-        `${lat},${lng}`,
-        `${padalaDropoffCoords.lat},${padalaDropoffCoords.lng}`
-      );
-      if (result && !isNaN(result.distance)) {
-        setDistance(result.distance);
-        setDeliveryFee(calculateDeliveryFee(result.distance));
-        const route = await getRouteOSRM({ lat, lng }, padalaDropoffCoords);
-        setRouteCoordinates(route);
-      }
-    }
+    calculatePadalaFee();
   };
 
-  const handlePadalaDropoffSelect = async (lat: number, lng: number) => {
-    setPadalaDropoffCoords({ lat, lng });
+  const handlePadalaDropoffSelect = async (lat: number, lng: number, dropoffId?: string) => {
+    const targetId = dropoffId || padalaDropoffs[0].id;
     setShouldFitBounds(false);
     
     // Reverse geocode
@@ -247,24 +258,18 @@ const PadalaBooking: React.FC<PadalaBookingProps> = ({ onBack, mode = 'full' }) 
       );
       const data = await response.json();
       if (data && data.display_name) {
-        setPadalaData(prev => ({ ...prev, delivery_address: data.display_name }));
+        updatePadalaDropoff(targetId, 'address', data.display_name);
+        updatePadalaDropoff(targetId, 'coords', { lat, lng });
+      } else {
+        updatePadalaDropoff(targetId, 'coords', { lat, lng });
       }
     } catch (err) {
       console.error('Reverse geocoding error:', err);
+      updatePadalaDropoff(targetId, 'coords', { lat, lng });
     }
 
-    if (padalaPickupCoords) {
-      const result = await calculateDistanceBetweenAddresses(
-        `${padalaPickupCoords.lat},${padalaPickupCoords.lng}`,
-        `${lat},${lng}`
-      );
-      if (result && !isNaN(result.distance)) {
-        setDistance(result.distance);
-        setDeliveryFee(calculateDeliveryFee(result.distance));
-        const route = await getRouteOSRM(padalaPickupCoords, { lat, lng });
-        setRouteCoordinates(route);
-      }
-    }
+    // Give it a moment to update state before recalculating fees
+    setTimeout(calculatePadalaFee, 500);
   };
 
   // ═══════════ PABILI / PADALA STORE ORDER HANDLERS ═══════════
@@ -426,14 +431,15 @@ const PadalaBooking: React.FC<PadalaBookingProps> = ({ onBack, mode = 'full' }) 
       }
     } else {
       // Padala mode validation
+      const hasValidDropoffs = padalaDropoffs.some(d => d.address.trim() && d.receiver_name.trim() && d.contact_number.trim());
       if (
         !padalaData.customer_name ||
         !padalaData.contact_number ||
         !padalaData.pickup_address ||
-        !padalaData.delivery_address ||
-        !padalaData.item_description
+        !padalaData.item_description ||
+        !hasValidDropoffs
       ) {
-        alert('Please fill in all required fields');
+        alert('Please fill in all required fields, including at least one valid drop-off.');
         return;
       }
     }
@@ -512,13 +518,17 @@ Please confirm this Pabili order. Thank you! 🛵`;
 
       } else {
         // ═══════════ PADALA SUBMISSION ═══════════
+        const validDropoffs = padalaDropoffs.filter(d => d.address.trim() && d.receiver_name.trim() && d.contact_number.trim());
+        const deliveryAddressString = validDropoffs.map((d, i) => `Dropoff ${i + 1}: ${d.address} (${d.receiver_name})`).join(' | ');
+        const notesString = validDropoffs.map((d, i) => d.landmark ? `Dropoff ${i + 1} Landmark: ${d.landmark}` : '').filter(Boolean).join(' | ') + (padalaData.notes ? ` | General Notes: ${padalaData.notes}` : '');
+
         const { error } = await supabase
           .from('padala_bookings')
           .insert({
             customer_name: padalaData.customer_name,
             contact_number: padalaData.contact_number,
             pickup_address: padalaData.pickup_address,
-            delivery_address: padalaData.delivery_address,
+            delivery_address: deliveryAddressString,
             item_description: padalaData.item_description || null,
             item_weight: padalaData.item_weight ? padalaData.item_weight : null,
             item_value: padalaData.item_value ? parseFloat(padalaData.item_value) : null,
@@ -527,7 +537,7 @@ Please confirm this Pabili order. Thank you! 🛵`;
             preferred_time: padalaData.preferred_time,
             delivery_fee: deliveryFee || null,
             distance_km: distance || null,
-            notes: padalaData.notes ? padalaData.notes : null,
+            notes: notesString ? notesString : null,
             status: 'pending'
           });
 
@@ -535,14 +545,16 @@ Please confirm this Pabili order. Thank you! 🛵`;
 
         const message = `📦 Padala Service
 
-👤 Customer: ${padalaData.customer_name}
+👤 Sender: ${padalaData.customer_name}
 📞 Contact: ${padalaData.contact_number}
 
 📍 Pickup Address:
 ${padalaData.pickup_address}${padalaPickupCoords ? `\n📌 Pickup Pin: https://maps.google.com/?q=${padalaPickupCoords.lat},${padalaPickupCoords.lng}` : ''}
 
-📍 Delivery Address:
-${padalaData.delivery_address}${padalaDropoffCoords ? `\n📌 Delivery Pin: https://maps.google.com/?q=${padalaDropoffCoords.lat},${padalaDropoffCoords.lng}` : ''}
+${validDropoffs.map((d, i) => `📍 Drop-off ${i + 1}:
+👤 Receiver: ${d.receiver_name}
+📞 Contact: ${d.contact_number}
+🏠 Address: ${d.address}${d.coords ? `\n📌 Pin: https://maps.google.com/?q=${d.coords.lat},${d.coords.lng}` : ''}${d.landmark ? `\n🗺️ Landmark: ${d.landmark}` : ''}`).join('\n\n')}
 
 ${padalaData.item_description ? `📦 Item Details:\n${padalaData.item_description}\n` : ''}${padalaData.item_weight ? `Weight: ${padalaData.item_weight}\n` : ''}${padalaData.item_value ? `Declared Value: ₱${padalaData.item_value}\n` : ''}
 📅 Preferred Date: ${padalaData.preferred_date || 'Any'}
@@ -551,7 +563,7 @@ ${padalaData.item_description ? `📦 Item Details:\n${padalaData.item_descripti
 ${distance ? `📏 Distance: ${distance} km` : ''}
 💰 Delivery Fee: ₱${deliveryFee.toFixed(2)}
 
-${padalaData.special_instructions ? `📝 Special Instructions: ${padalaData.special_instructions}` : ''}${padalaData.notes ? `\n📝 Notes: ${padalaData.notes}` : ''}
+${padalaData.special_instructions ? `📝 Special Instructions: ${padalaData.special_instructions}` : ''}${padalaData.notes ? `\n📝 General Notes: ${padalaData.notes}` : ''}
 
 Please confirm this Padala booking. Thank you! 🛵`;
 
@@ -565,7 +577,6 @@ Please confirm this Padala booking. Thank you! 🛵`;
           customer_name: '',
           contact_number: '',
           pickup_address: '',
-          delivery_address: '',
           item_description: '',
           item_weight: '',
           item_value: '',
@@ -574,6 +585,7 @@ Please confirm this Padala booking. Thank you! 🛵`;
           preferred_time: 'Morning',
           notes: ''
         });
+        setPadalaDropoffs([{ id: `dropoff-${Date.now()}`, receiver_name: '', contact_number: '', address: '', landmark: '', coords: null }]);
       }
 
       setDistance(null);
@@ -867,12 +879,12 @@ Please confirm this Padala booking. Thank you! 🛵`;
           <p className="text-gray-500 mt-1">Send items across the city quickly and safely</p>
         </div>
 
-        {/* Customer Information */}
+        {/* Sender Information */}
         <div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Customer Information</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Sender Information</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Sender's Full Name *</label>
               <input
                 type="text"
                 name="customer_name"
@@ -924,67 +936,126 @@ Please confirm this Padala booking. Thank you! 🛵`;
                 placeholder="Enter complete pickup address"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Delivery Address *</label>
+
+            {/* Dropoffs Array Mapping */}
+            <div className="mt-8">
+              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center justify-between">
+                <span>Drop-off Locations</span>
+              </h3>
+              {padalaDropoffs.map((dropoff, index) => (
+                <div key={dropoff.id} className="p-5 border-2 border-gray-100 rounded-xl space-y-4 mb-4 relative bg-gray-50/50">
+                  <div className="flex justify-between items-center text-sm font-bold text-blue-600 mb-2">
+                    <span className="flex items-center gap-2"><MapPin className="h-4 w-4" />Drop-off {index + 1}</span>
+                    {padalaDropoffs.length > 1 && (
+                      <button type="button" onClick={() => removePadalaDropoff(dropoff.id)} className="text-red-500 hover:text-red-700 bg-red-50 p-1.5 rounded-lg transition-colors">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Receiver's Name *</label>
+                      <input
+                        type="text"
+                        value={dropoff.receiver_name}
+                        onChange={(e) => updatePadalaDropoff(dropoff.id, 'receiver_name', e.target.value)}
+                        required
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Name of receiver"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Contact Number *</label>
+                      <input
+                        type="tel"
+                        value={dropoff.contact_number}
+                        onChange={(e) => updatePadalaDropoff(dropoff.id, 'contact_number', e.target.value)}
+                        required
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="09XX XXX XXXX"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Delivery Address *</label>
+                    <textarea
+                      value={dropoff.address}
+                      onChange={(e) => updatePadalaDropoff(dropoff.id, 'address', e.target.value)}
+                      onBlur={calculatePadalaFee}
+                      required
+                      rows={2}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Enter complete delivery address"
+                    />
+                    {isCalculating && index === padalaDropoffs.length - 1 && (
+                      <p className="text-xs text-gray-500 mt-1">Calculating distance...</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Landmark</label>
+                    <input
+                      type="text"
+                      value={dropoff.landmark}
+                      onChange={(e) => updatePadalaDropoff(dropoff.id, 'landmark', e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="e.g., Near McDonald's, Beside 7-Eleven"
+                    />
+                  </div>
+                </div>
+              ))}
+              
               <button
                 type="button"
-                onClick={() => getCurrentLocation('padala_dropoff')}
-                disabled={isGettingLocation}
-                className="w-full mb-2 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-2 font-medium"
+                onClick={addPadalaDropoff}
+                className="w-full mt-2 py-3 border-2 border-dashed border-blue-300 rounded-xl text-blue-600 font-medium hover:bg-blue-50 flex items-center justify-center gap-2 transition-colors"
               >
-                <Navigation className={`h-5 w-5 ${isGettingLocation ? 'animate-spin' : ''}`} />
-                {isGettingLocation ? 'Getting Location...' : 'Use My Current Location'}
+                <Plus className="h-5 w-5" />
+                Add Another Drop-off
               </button>
-              <textarea
-                name="delivery_address"
-                value={padalaData.delivery_address}
-                onChange={handlePadalaInputChange}
-                onBlur={calculatePadalaFee}
-                required
-                rows={3}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-primary focus:border-transparent"
-                placeholder="Enter complete delivery address"
-              />
-              {isCalculating && (
-                <p className="text-xs text-gray-500 mt-1">Calculating distance...</p>
-              )}
             </div>
           </div>
+        </div>
 
-          {/* Padala Map */}
-          <div className="bg-white rounded-xl shadow-sm p-6 md:p-8 space-y-4">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                🗺️ Delivery Map
-              </h2>
-              <div className="flex rounded-xl overflow-hidden border border-gray-200 shadow-sm">
-                <button
-                  type="button"
-                  onClick={() => setPadalaSelectionMode('pickup')}
-                  className={`px-4 py-2 text-sm font-bold transition-all ${padalaSelectionMode === 'pickup' ? 'bg-purple-600 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
-                >
-                  Pick Pickup
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPadalaSelectionMode('dropoff')}
-                  className={`px-4 py-2 text-sm font-bold transition-all ${padalaSelectionMode === 'dropoff' ? 'bg-blue-600 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
-                >
-                  Pick Drop-off
-                </button>
-              </div>
+        {/* Padala Map */}
+        <div className="bg-white rounded-xl shadow-sm p-6 md:p-8 space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+              🗺️ Delivery Map
+            </h2>
+            <div className="flex rounded-xl overflow-hidden border border-gray-200 shadow-sm">
+              <button
+                type="button"
+                onClick={() => setPadalaSelectionMode('pickup')}
+                className={`px-4 py-2 text-sm font-bold transition-all ${padalaSelectionMode === 'pickup' ? 'bg-purple-600 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+              >
+                Pick Pickup
+              </button>
+              <button
+                type="button"
+                onClick={() => setPadalaSelectionMode('dropoff')}
+                className={`px-4 py-2 text-sm font-bold transition-all ${padalaSelectionMode === 'dropoff' ? 'bg-blue-600 text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+              >
+                Pick Drop-off
+              </button>
             </div>
+          </div>
             <DeliveryMap
-              pickupLocation={padalaPickupCoords || { lat: 7.2906, lng: 125.3764 }}
-              dropoffLocation={padalaDropoffCoords}
+              pickupLocation={padalaPickupCoords || { lat: 14.9667, lng: 120.5333 }}
+              dropoffLocations={padalaDropoffs.filter(d => d.coords).map((d) => ({
+                 id: d.id,
+                 lat: d.coords!.lat,
+                 lng: d.coords!.lng,
+                 address: d.address
+              }))}
               distance={distance}
-              address={padalaData.delivery_address}
               onPickupSelect={handlePadalaPickupSelect}
-              onDropoffSelect={handlePadalaDropoffSelect}
+              onDropoffSelect={(lat, lng, id) => handlePadalaDropoffSelect(lat, lng, id)}
               routeCoordinates={routeCoordinates}
               fitBounds={shouldFitBounds}
               pickupLabel="Pickup Point"
-              dropoffLabel="Delivery Point"
+              dropoffLabel="Drop-off"
               pickupIcon="📦"
               dropoffIcon="📍"
               pickupColor="#9333ea" // purple-600
@@ -995,7 +1066,6 @@ Please confirm this Padala booking. Thank you! 🛵`;
               <span>💡</span> Tip: Select a mode above, then tap map or drag pins to set locations.
             </p>
           </div>
-        </div>
 
         {/* Item Details */}
         <div>

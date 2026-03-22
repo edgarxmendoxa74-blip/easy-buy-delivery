@@ -16,7 +16,22 @@ const SiteSettingsManager: React.FC = () => {
     facebook_handle: '',
     currency: '',
     currency_code: '',
-    messenger_id: ''
+    messenger_id: '',
+    daily_operation_schedule: '',
+    easy_buy_delivery_base_fee: 0,
+    easy_buy_multiple_store_fee: 0,
+    easy_buy_convenience_fee: 0,
+    easy_buy_convenience_enabled: false,
+    easy_buy_starting_point_fee: 0,
+    easy_buy_starting_point_enabled: false,
+    padala_base_fee: 0,
+    padala_additional_dropoff_fee: 0,
+    padala_convenience_fee: 0,
+    padala_convenience_enabled: false,
+    angkas_transport_fee_per_km: 0,
+    feature_padala_enabled: true,
+    feature_angkas_enabled: true,
+    feature_pabili_enabled: true
   });
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string>('');
@@ -32,17 +47,33 @@ const SiteSettingsManager: React.FC = () => {
         facebook_handle: siteSettings.facebook_handle,
         currency: siteSettings.currency,
         currency_code: siteSettings.currency_code,
-        messenger_id: siteSettings.messenger_id
+        messenger_id: siteSettings.messenger_id,
+        daily_operation_schedule: siteSettings.daily_operation_schedule || '',
+        easy_buy_delivery_base_fee: siteSettings.easy_buy_delivery_base_fee || 0,
+        easy_buy_multiple_store_fee: siteSettings.easy_buy_multiple_store_fee || 0,
+        easy_buy_convenience_fee: siteSettings.easy_buy_convenience_fee || 0,
+        easy_buy_convenience_enabled: siteSettings.easy_buy_convenience_enabled || false,
+        easy_buy_starting_point_fee: siteSettings.easy_buy_starting_point_fee || 0,
+        easy_buy_starting_point_enabled: siteSettings.easy_buy_starting_point_enabled || false,
+        padala_base_fee: siteSettings.padala_base_fee || 0,
+        padala_additional_dropoff_fee: siteSettings.padala_additional_dropoff_fee || 0,
+        padala_convenience_fee: siteSettings.padala_convenience_fee || 0,
+        padala_convenience_enabled: siteSettings.padala_convenience_enabled || false,
+        angkas_transport_fee_per_km: siteSettings.angkas_transport_fee_per_km || 0,
+        feature_padala_enabled: siteSettings.feature_padala_enabled ?? true,
+        feature_angkas_enabled: siteSettings.feature_angkas_enabled ?? true,
+        feature_pabili_enabled: siteSettings.feature_pabili_enabled ?? true
       });
       setLogoPreview(siteSettings.site_logo);
     }
   }, [siteSettings]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
+    const target = e.target as HTMLInputElement;
+    const { name, value, type, checked } = target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: type === 'checkbox' ? checked : type === 'number' ? (value === '' ? 0 : Number(value)) : value
     }));
   };
 
@@ -79,7 +110,22 @@ const SiteSettingsManager: React.FC = () => {
         currency: formData.currency,
         currency_code: formData.currency_code,
         messenger_id: formData.messenger_id,
-        site_logo: logoUrl
+        site_logo: logoUrl,
+        daily_operation_schedule: formData.daily_operation_schedule,
+        easy_buy_delivery_base_fee: formData.easy_buy_delivery_base_fee,
+        easy_buy_multiple_store_fee: formData.easy_buy_multiple_store_fee,
+        easy_buy_convenience_fee: formData.easy_buy_convenience_fee,
+        easy_buy_convenience_enabled: formData.easy_buy_convenience_enabled,
+        easy_buy_starting_point_fee: formData.easy_buy_starting_point_fee,
+        easy_buy_starting_point_enabled: formData.easy_buy_starting_point_enabled,
+        padala_base_fee: formData.padala_base_fee,
+        padala_additional_dropoff_fee: formData.padala_additional_dropoff_fee,
+        padala_convenience_fee: formData.padala_convenience_fee,
+        padala_convenience_enabled: formData.padala_convenience_enabled,
+        angkas_transport_fee_per_km: formData.angkas_transport_fee_per_km,
+        feature_padala_enabled: formData.feature_padala_enabled,
+        feature_angkas_enabled: formData.feature_angkas_enabled,
+        feature_pabili_enabled: formData.feature_pabili_enabled
       });
 
       setIsEditing(false);
@@ -102,7 +148,22 @@ const SiteSettingsManager: React.FC = () => {
         facebook_handle: siteSettings.facebook_handle,
         currency: siteSettings.currency,
         currency_code: siteSettings.currency_code,
-        messenger_id: siteSettings.messenger_id
+        messenger_id: siteSettings.messenger_id,
+        daily_operation_schedule: siteSettings.daily_operation_schedule || '',
+        easy_buy_delivery_base_fee: siteSettings.easy_buy_delivery_base_fee || 0,
+        easy_buy_multiple_store_fee: siteSettings.easy_buy_multiple_store_fee || 0,
+        easy_buy_convenience_fee: siteSettings.easy_buy_convenience_fee || 0,
+        easy_buy_convenience_enabled: siteSettings.easy_buy_convenience_enabled || false,
+        easy_buy_starting_point_fee: siteSettings.easy_buy_starting_point_fee || 0,
+        easy_buy_starting_point_enabled: siteSettings.easy_buy_starting_point_enabled || false,
+        padala_base_fee: siteSettings.padala_base_fee || 0,
+        padala_additional_dropoff_fee: siteSettings.padala_additional_dropoff_fee || 0,
+        padala_convenience_fee: siteSettings.padala_convenience_fee || 0,
+        padala_convenience_enabled: siteSettings.padala_convenience_enabled || false,
+        angkas_transport_fee_per_km: siteSettings.angkas_transport_fee_per_km || 0,
+        feature_padala_enabled: siteSettings.feature_padala_enabled ?? true,
+        feature_angkas_enabled: siteSettings.feature_angkas_enabled ?? true,
+        feature_pabili_enabled: siteSettings.feature_pabili_enabled ?? true
       });
       setLogoPreview(siteSettings.site_logo);
     }
@@ -369,6 +430,115 @@ const SiteSettingsManager: React.FC = () => {
           <p className="text-xs text-gray-500 mt-1">
             This ID is used to construct the link <code>https://m.me/ID</code> when users submit orders or bookings.
           </p>
+        </div>
+
+        <hr className="border-gray-200 mt-8 mb-4" />
+        <h3 className="text-xl font-noto font-semibold text-black mb-4">Easy Buy Delivery Preferences</h3>
+
+        {/* Daily Time Operation Schedule */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Daily Time Operation Schedule
+          </label>
+          {isEditing ? (
+            <input
+              type="text"
+              name="daily_operation_schedule"
+              value={formData.daily_operation_schedule}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+              placeholder="e.g., 8:00 AM - 10:00 PM"
+            />
+          ) : (
+            <p className="text-gray-600">{siteSettings?.daily_operation_schedule || 'Not set'}</p>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Easy Buy Delivery Base Fee */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Delivery Base Fee (₱)
+            </label>
+            {isEditing ? (
+              <input
+                type="number"
+                name="easy_buy_delivery_base_fee"
+                value={formData.easy_buy_delivery_base_fee}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                min="0"
+              />
+            ) : (
+              <p className="text-gray-600">₱{siteSettings?.easy_buy_delivery_base_fee || 0}</p>
+            )}
+          </div>
+
+          {/* Easy Buy Multiple Store Fee */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Multiple Store Fee (₱)
+            </label>
+            {isEditing ? (
+              <input
+                type="number"
+                name="easy_buy_multiple_store_fee"
+                value={formData.easy_buy_multiple_store_fee}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                min="0"
+              />
+            ) : (
+              <p className="text-gray-600">₱{siteSettings?.easy_buy_multiple_store_fee || 0} per additional store</p>
+            )}
+            <p className="text-xs text-gray-500 mt-1">Fee applied for each extra store picked up from.</p>
+          </div>
+        </div>
+
+        {/* Convenience Fee */}
+        <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h4 className="text-sm font-medium text-gray-900">Convenience Fee</h4>
+              <p className="text-xs text-gray-500">Apply an extra fee to Easy Buy orders</p>
+            </div>
+            {isEditing ? (
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  name="easy_buy_convenience_enabled"
+                  checked={formData.easy_buy_convenience_enabled}
+                  onChange={handleInputChange}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-red-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
+              </label>
+            ) : (
+              <span className={`px-2 py-1 text-xs font-medium rounded-full ${siteSettings?.easy_buy_convenience_enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                {siteSettings?.easy_buy_convenience_enabled ? 'Enabled' : 'Disabled'}
+              </span>
+            )}
+          </div>
+          
+          {(isEditing ? formData.easy_buy_convenience_enabled : siteSettings?.easy_buy_convenience_enabled) && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Convenience Fee Amount (₱)
+              </label>
+              {isEditing ? (
+                <input
+                  type="number"
+                  name="easy_buy_convenience_fee"
+                  value={formData.easy_buy_convenience_fee}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  min="0"
+                />
+              ) : (
+                <p className="text-gray-600">₱{siteSettings?.easy_buy_convenience_fee || 0}</p>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

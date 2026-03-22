@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
+import { useSiteSettings } from '../hooks/useSiteSettings';
 
 interface ServiceSelectionProps {
   onServiceSelect: (service: 'food' | 'pabili' | 'padala' | 'requests') => void;
@@ -7,6 +8,7 @@ interface ServiceSelectionProps {
 
 const ServiceSelection: React.FC<ServiceSelectionProps> = ({ onServiceSelect }) => {
   const [showGuide, setShowGuide] = useState(false);
+  const { siteSettings } = useSiteSettings();
 
   const services = [
     {
@@ -15,7 +17,8 @@ const ServiceSelection: React.FC<ServiceSelectionProps> = ({ onServiceSelect }) 
       icon: '🍔',
       description: 'Order from your favorite restaurants',
       color: 'bg-orange-50 hover:bg-orange-100 border-orange-200',
-      iconColor: 'text-orange-600'
+      iconColor: 'text-orange-600',
+      enabled: true // Food catalog can't be toggled off per requirements, or isn't requested to be.
     },
     {
       id: 'pabili' as const,
@@ -23,7 +26,8 @@ const ServiceSelection: React.FC<ServiceSelectionProps> = ({ onServiceSelect }) 
       icon: '🛒',
       description: 'Personal grocery & errands runner',
       color: 'bg-blue-50 hover:bg-blue-100 border-blue-200',
-      iconColor: 'text-blue-600'
+      iconColor: 'text-blue-600',
+      enabled: siteSettings?.feature_pabili_enabled !== false
     },
     {
       id: 'padala' as const,
@@ -31,7 +35,8 @@ const ServiceSelection: React.FC<ServiceSelectionProps> = ({ onServiceSelect }) 
       icon: '📦',
       description: 'Fast & secure item delivery service',
       color: 'bg-purple-50 hover:bg-purple-100 border-purple-200',
-      iconColor: 'text-purple-600'
+      iconColor: 'text-purple-600',
+      enabled: siteSettings?.feature_padala_enabled !== false
     },
     {
       id: 'requests' as const,
@@ -39,15 +44,23 @@ const ServiceSelection: React.FC<ServiceSelectionProps> = ({ onServiceSelect }) 
       icon: '🛵',
       description: 'Quick motorcycle taxi transport',
       color: 'bg-green-50 hover:bg-green-100 border-green-200',
-      iconColor: 'text-green-600'
+      iconColor: 'text-green-600',
+      enabled: siteSettings?.feature_angkas_enabled !== false
     }
   ];
+
+  const visibleServices = services.filter(s => s.enabled);
 
   const handleServiceClick = (serviceId: 'food' | 'pabili' | 'padala' | 'requests') => {
     onServiceSelect(serviceId);
   };
 
   const steps = [
+    {
+      icon: '📍',
+      title: 'Enable Location Setting',
+      description: 'Allow your browser to access your location. This ensures we can get your accurate coordinates to compute delivery fees correctly.'
+    },
     {
       icon: '1️⃣',
       title: 'Choose a Service',
@@ -91,9 +104,9 @@ const ServiceSelection: React.FC<ServiceSelectionProps> = ({ onServiceSelect }) 
           <p className="text-gray-500 text-lg font-light">Select a service to get started</p>
         </div>
 
-        {/* Services Grid - 4 services in a row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
-          {services.map((service) => (
+        {/* Services Grid */}
+        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-${Math.min(visibleServices.length, 4)} gap-6 md:gap-8`}>
+          {visibleServices.map((service) => (
             <button
               key={service.id}
               onClick={() => handleServiceClick(service.id)}
@@ -143,7 +156,7 @@ const ServiceSelection: React.FC<ServiceSelectionProps> = ({ onServiceSelect }) 
             <div className="sticky top-0 bg-white rounded-t-3xl border-b border-gray-100 px-6 py-5 flex items-center justify-between z-10">
               <div>
                 <h2 className="text-2xl font-brand font-bold text-brand-charcoal">📖 How to Use</h2>
-                <p className="text-sm text-gray-500 mt-0.5">Easy Buy Delivery in 6 simple steps</p>
+                <p className="text-sm text-gray-500 mt-0.5">Easy Buy Delivery in 7 simple steps</p>
               </div>
               <button
                 onClick={() => setShowGuide(false)}

@@ -45,6 +45,8 @@ export const useRestaurantsAdmin = () => {
         starting_point_lat: item.starting_point_lat || undefined,
         starting_point_lng: item.starting_point_lng || undefined,
         starting_point_enabled: item.starting_point_enabled ?? false,
+        starting_point_fee: item.starting_point_fee || 0,
+        starting_point_fee_enabled: item.starting_point_fee_enabled ?? false,
         convenience_fee: item.convenience_fee || 0,
         convenience_fee_enabled: item.convenience_fee_enabled ?? false,
         additional_store_fee: item.additional_store_fee || 0
@@ -95,6 +97,8 @@ export const useRestaurantsAdmin = () => {
           starting_point_lat: restaurant.starting_point_lat || null,
           starting_point_lng: restaurant.starting_point_lng || null,
           starting_point_enabled: restaurant.starting_point_enabled ?? false,
+          starting_point_fee: restaurant.starting_point_fee || 0,
+          starting_point_fee_enabled: restaurant.starting_point_fee_enabled ?? false,
           convenience_fee: restaurant.convenience_fee || 0,
           convenience_fee_enabled: restaurant.convenience_fee_enabled ?? false,
           additional_store_fee: restaurant.additional_store_fee || 0
@@ -137,6 +141,8 @@ export const useRestaurantsAdmin = () => {
       if (updates.starting_point_lat !== undefined) updateData.starting_point_lat = updates.starting_point_lat || null;
       if (updates.starting_point_lng !== undefined) updateData.starting_point_lng = updates.starting_point_lng || null;
       if (updates.starting_point_enabled !== undefined) updateData.starting_point_enabled = updates.starting_point_enabled;
+      if (updates.starting_point_fee !== undefined) updateData.starting_point_fee = updates.starting_point_fee;
+      if (updates.starting_point_fee_enabled !== undefined) updateData.starting_point_fee_enabled = updates.starting_point_fee_enabled;
       if (updates.convenience_fee !== undefined) updateData.convenience_fee = updates.convenience_fee;
       if (updates.convenience_fee_enabled !== undefined) updateData.convenience_fee_enabled = updates.convenience_fee_enabled;
       if (updates.additional_store_fee !== undefined) updateData.additional_store_fee = updates.additional_store_fee;
